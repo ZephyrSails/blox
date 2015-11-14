@@ -1,8 +1,7 @@
 // Navigation Scripts to Show Header on Scroll-Up
 
 jQuery(document).ready(function($) {
-  console.log("what?");
-    var MQL = 1170;
+    var MQL = 767;
 
     //primary navigation slide-in effect
     if ($(window).width() > MQL) {
@@ -22,7 +21,7 @@ jQuery(document).ready(function($) {
                         console.log("what?");
                     } else {
                         $('.navbar-custom').removeClass('is-visible is-fixed');
-                        console.log("what?");
+                        // console.log("what?");
                     }
                 } else {
                     //if scrolling down...
