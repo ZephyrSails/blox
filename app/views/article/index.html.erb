@@ -1,0 +1,46 @@
+<!-- Page Header -->
+<!-- Set your background image for this header on the line below. -->
+<header class="intro-header" style="background-image: url('assets/desktop/Hawaiian Print.jpg')">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <div class="site-heading">
+          <h1>Zephyr Sails<h1>
+          <hr class="small">
+          <span class="subheading">programmer</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<div class="container">
+  <div class="row">
+    <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+      <% @articles.reverse.each do |article| %>
+        <div class="post-preview">
+            <a href="post.html">
+              <h2 class="post-title">
+                <%= article.title %>
+              </h2>
+              <h3 class="post-subtitle">
+                <%= truncate(article.content, length: 200) %>
+                <!-- Today is 2015_1024, programmer's day, and also, my blog is sailing. -->
+              </h3>
+            </a>
+            <p class="post-meta">Posted by <a href="#">ZephyrSails</a> on <%= article.created_at %></p>
+        </div>
+        <hr>
+      <% end %>
+
+
+      <!-- Pager -->
+      <ul class="pager">
+        <li class="next">
+          <a href="#">Older Posts &rarr;</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

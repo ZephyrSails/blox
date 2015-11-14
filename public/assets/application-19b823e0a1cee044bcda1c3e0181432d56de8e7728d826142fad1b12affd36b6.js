@@ -10350,6 +10350,2378 @@ if ( typeof noGlobal === strundefined ) {
 return jQuery;
 
 }));
+(function($, undefined) {
+
+/**
+ * Unobtrusive scripting adapter for jQuery
+ * https://github.com/rails/jquery-ujs
+ *
+ * Requires jQuery 1.8.0 or later.
+ *
+ * Released under the MIT license
+ *
+ */
+
+  // Cut down on the number of issues from people inadvertently including jquery_ujs twice
+  // by detecting and raising an error when it happens.
+  'use strict';
+
+  if ( $.rails !== undefined ) {
+    $.error('jquery-ujs has already been loaded!');
+  }
+
+  // Shorthand to make it a little easier to call public rails functions from within rails.js
+  var rails;
+  var $document = $(document);
+
+  $.rails = rails = {
+    // Link elements bound by jquery-ujs
+    linkClickSelector: 'a[data-confirm], a[data-method], a[data-remote], a[data-disable-with], a[data-disable]',
+
+    // Button elements bound by jquery-ujs
+    buttonClickSelector: 'button[data-remote]:not(form button), button[data-confirm]:not(form button)',
+
+    // Select elements bound by jquery-ujs
+    inputChangeSelector: 'select[data-remote], input[data-remote], textarea[data-remote]',
+
+    // Form elements bound by jquery-ujs
+    formSubmitSelector: 'form',
+
+    // Form input elements bound by jquery-ujs
+    formInputClickSelector: 'form input[type=submit], form input[type=image], form button[type=submit], form button:not([type]), input[type=submit][form], input[type=image][form], button[type=submit][form], button[form]:not([type])',
+
+    // Form input elements disabled during form submission
+    disableSelector: 'input[data-disable-with]:enabled, button[data-disable-with]:enabled, textarea[data-disable-with]:enabled, input[data-disable]:enabled, button[data-disable]:enabled, textarea[data-disable]:enabled',
+
+    // Form input elements re-enabled after form submission
+    enableSelector: 'input[data-disable-with]:disabled, button[data-disable-with]:disabled, textarea[data-disable-with]:disabled, input[data-disable]:disabled, button[data-disable]:disabled, textarea[data-disable]:disabled',
+
+    // Form required input elements
+    requiredInputSelector: 'input[name][required]:not([disabled]),textarea[name][required]:not([disabled])',
+
+    // Form file input elements
+    fileInputSelector: 'input[type=file]:not([disabled])',
+
+    // Link onClick disable selector with possible reenable after remote submission
+    linkDisableSelector: 'a[data-disable-with], a[data-disable]',
+
+    // Button onClick disable selector with possible reenable after remote submission
+    buttonDisableSelector: 'button[data-remote][data-disable-with], button[data-remote][data-disable]',
+
+    // Up-to-date Cross-Site Request Forgery token
+    csrfToken: function() {
+     return $('meta[name=csrf-token]').attr('content');
+    },
+
+    // URL param that must contain the CSRF token
+    csrfParam: function() {
+     return $('meta[name=csrf-param]').attr('content');
+    },
+
+    // Make sure that every Ajax request sends the CSRF token
+    CSRFProtection: function(xhr) {
+      var token = rails.csrfToken();
+      if (token) xhr.setRequestHeader('X-CSRF-Token', token);
+    },
+
+    // making sure that all forms have actual up-to-date token(cached forms contain old one)
+    refreshCSRFTokens: function(){
+      $('form input[name="' + rails.csrfParam() + '"]').val(rails.csrfToken());
+    },
+
+    // Triggers an event on an element and returns false if the event result is false
+    fire: function(obj, name, data) {
+      var event = $.Event(name);
+      obj.trigger(event, data);
+      return event.result !== false;
+    },
+
+    // Default confirm dialog, may be overridden with custom confirm dialog in $.rails.confirm
+    confirm: function(message) {
+      return confirm(message);
+    },
+
+    // Default ajax function, may be overridden with custom function in $.rails.ajax
+    ajax: function(options) {
+      return $.ajax(options);
+    },
+
+    // Default way to get an element's href. May be overridden at $.rails.href.
+    href: function(element) {
+      return element[0].href;
+    },
+
+    // Checks "data-remote" if true to handle the request through a XHR request.
+    isRemote: function(element) {
+      return element.data('remote') !== undefined && element.data('remote') !== false;
+    },
+
+    // Submits "remote" forms and links with ajax
+    handleRemote: function(element) {
+      var method, url, data, withCredentials, dataType, options;
+
+      if (rails.fire(element, 'ajax:before')) {
+        withCredentials = element.data('with-credentials') || null;
+        dataType = element.data('type') || ($.ajaxSettings && $.ajaxSettings.dataType);
+
+        if (element.is('form')) {
+          method = element.attr('method');
+          url = element.attr('action');
+          data = element.serializeArray();
+          // memoized value from clicked submit button
+          var button = element.data('ujs:submit-button');
+          if (button) {
+            data.push(button);
+            element.data('ujs:submit-button', null);
+          }
+        } else if (element.is(rails.inputChangeSelector)) {
+          method = element.data('method');
+          url = element.data('url');
+          data = element.serialize();
+          if (element.data('params')) data = data + '&' + element.data('params');
+        } else if (element.is(rails.buttonClickSelector)) {
+          method = element.data('method') || 'get';
+          url = element.data('url');
+          data = element.serialize();
+          if (element.data('params')) data = data + '&' + element.data('params');
+        } else {
+          method = element.data('method');
+          url = rails.href(element);
+          data = element.data('params') || null;
+        }
+
+        options = {
+          type: method || 'GET', data: data, dataType: dataType,
+          // stopping the "ajax:beforeSend" event will cancel the ajax request
+          beforeSend: function(xhr, settings) {
+            if (settings.dataType === undefined) {
+              xhr.setRequestHeader('accept', '*/*;q=0.5, ' + settings.accepts.script);
+            }
+            if (rails.fire(element, 'ajax:beforeSend', [xhr, settings])) {
+              element.trigger('ajax:send', xhr);
+            } else {
+              return false;
+            }
+          },
+          success: function(data, status, xhr) {
+            element.trigger('ajax:success', [data, status, xhr]);
+          },
+          complete: function(xhr, status) {
+            element.trigger('ajax:complete', [xhr, status]);
+          },
+          error: function(xhr, status, error) {
+            element.trigger('ajax:error', [xhr, status, error]);
+          },
+          crossDomain: rails.isCrossDomain(url)
+        };
+
+        // There is no withCredentials for IE6-8 when
+        // "Enable native XMLHTTP support" is disabled
+        if (withCredentials) {
+          options.xhrFields = {
+            withCredentials: withCredentials
+          };
+        }
+
+        // Only pass url to `ajax` options if not blank
+        if (url) { options.url = url; }
+
+        return rails.ajax(options);
+      } else {
+        return false;
+      }
+    },
+
+    // Determines if the request is a cross domain request.
+    isCrossDomain: function(url) {
+      var originAnchor = document.createElement('a');
+      originAnchor.href = location.href;
+      var urlAnchor = document.createElement('a');
+
+      try {
+        urlAnchor.href = url;
+        // This is a workaround to a IE bug.
+        urlAnchor.href = urlAnchor.href;
+
+        // If URL protocol is false or is a string containing a single colon
+        // *and* host are false, assume it is not a cross-domain request
+        // (should only be the case for IE7 and IE compatibility mode).
+        // Otherwise, evaluate protocol and host of the URL against the origin
+        // protocol and host.
+        return !(((!urlAnchor.protocol || urlAnchor.protocol === ':') && !urlAnchor.host) ||
+          (originAnchor.protocol + '//' + originAnchor.host ===
+            urlAnchor.protocol + '//' + urlAnchor.host));
+      } catch (e) {
+        // If there is an error parsing the URL, assume it is crossDomain.
+        return true;
+      }
+    },
+
+    // Handles "data-method" on links such as:
+    // <a href="/users/5" data-method="delete" rel="nofollow" data-confirm="Are you sure?">Delete</a>
+    handleMethod: function(link) {
+      var href = rails.href(link),
+        method = link.data('method'),
+        target = link.attr('target'),
+        csrfToken = rails.csrfToken(),
+        csrfParam = rails.csrfParam(),
+        form = $('<form method="post" action="' + href + '"></form>'),
+        metadataInput = '<input name="_method" value="' + method + '" type="hidden" />';
+
+      if (csrfParam !== undefined && csrfToken !== undefined && !rails.isCrossDomain(href)) {
+        metadataInput += '<input name="' + csrfParam + '" value="' + csrfToken + '" type="hidden" />';
+      }
+
+      if (target) { form.attr('target', target); }
+
+      form.hide().append(metadataInput).appendTo('body');
+      form.submit();
+    },
+
+    // Helper function that returns form elements that match the specified CSS selector
+    // If form is actually a "form" element this will return associated elements outside the from that have
+    // the html form attribute set
+    formElements: function(form, selector) {
+      return form.is('form') ? $(form[0].elements).filter(selector) : form.find(selector);
+    },
+
+    /* Disables form elements:
+      - Caches element value in 'ujs:enable-with' data store
+      - Replaces element text with value of 'data-disable-with' attribute
+      - Sets disabled property to true
+    */
+    disableFormElements: function(form) {
+      rails.formElements(form, rails.disableSelector).each(function() {
+        rails.disableFormElement($(this));
+      });
+    },
+
+    disableFormElement: function(element) {
+      var method, replacement;
+
+      method = element.is('button') ? 'html' : 'val';
+      replacement = element.data('disable-with');
+
+      element.data('ujs:enable-with', element[method]());
+      if (replacement !== undefined) {
+        element[method](replacement);
+      }
+
+      element.prop('disabled', true);
+    },
+
+    /* Re-enables disabled form elements:
+      - Replaces element text with cached value from 'ujs:enable-with' data store (created in `disableFormElements`)
+      - Sets disabled property to false
+    */
+    enableFormElements: function(form) {
+      rails.formElements(form, rails.enableSelector).each(function() {
+        rails.enableFormElement($(this));
+      });
+    },
+
+    enableFormElement: function(element) {
+      var method = element.is('button') ? 'html' : 'val';
+      if (typeof element.data('ujs:enable-with') !== 'undefined') element[method](element.data('ujs:enable-with'));
+      element.prop('disabled', false);
+    },
+
+   /* For 'data-confirm' attribute:
+      - Fires `confirm` event
+      - Shows the confirmation dialog
+      - Fires the `confirm:complete` event
+
+      Returns `true` if no function stops the chain and user chose yes; `false` otherwise.
+      Attaching a handler to the element's `confirm` event that returns a `falsy` value cancels the confirmation dialog.
+      Attaching a handler to the element's `confirm:complete` event that returns a `falsy` value makes this function
+      return false. The `confirm:complete` event is fired whether or not the user answered true or false to the dialog.
+   */
+    allowAction: function(element) {
+      var message = element.data('confirm'),
+          answer = false, callback;
+      if (!message) { return true; }
+
+      if (rails.fire(element, 'confirm')) {
+        try {
+          answer = rails.confirm(message);
+        } catch (e) {
+          (console.error || console.log).call(console, e.stack || e);
+        }
+        callback = rails.fire(element, 'confirm:complete', [answer]);
+      }
+      return answer && callback;
+    },
+
+    // Helper function which checks for blank inputs in a form that match the specified CSS selector
+    blankInputs: function(form, specifiedSelector, nonBlank) {
+      var inputs = $(), input, valueToCheck,
+          selector = specifiedSelector || 'input,textarea',
+          allInputs = form.find(selector);
+
+      allInputs.each(function() {
+        input = $(this);
+        valueToCheck = input.is('input[type=checkbox],input[type=radio]') ? input.is(':checked') : !!input.val();
+        if (valueToCheck === nonBlank) {
+
+          // Don't count unchecked required radio if other radio with same name is checked
+          if (input.is('input[type=radio]') && allInputs.filter('input[type=radio]:checked[name="' + input.attr('name') + '"]').length) {
+            return true; // Skip to next input
+          }
+
+          inputs = inputs.add(input);
+        }
+      });
+      return inputs.length ? inputs : false;
+    },
+
+    // Helper function which checks for non-blank inputs in a form that match the specified CSS selector
+    nonBlankInputs: function(form, specifiedSelector) {
+      return rails.blankInputs(form, specifiedSelector, true); // true specifies nonBlank
+    },
+
+    // Helper function, needed to provide consistent behavior in IE
+    stopEverything: function(e) {
+      $(e.target).trigger('ujs:everythingStopped');
+      e.stopImmediatePropagation();
+      return false;
+    },
+
+    //  replace element's html with the 'data-disable-with' after storing original html
+    //  and prevent clicking on it
+    disableElement: function(element) {
+      var replacement = element.data('disable-with');
+
+      element.data('ujs:enable-with', element.html()); // store enabled state
+      if (replacement !== undefined) {
+        element.html(replacement);
+      }
+
+      element.bind('click.railsDisable', function(e) { // prevent further clicking
+        return rails.stopEverything(e);
+      });
+    },
+
+    // restore element to its original state which was disabled by 'disableElement' above
+    enableElement: function(element) {
+      if (element.data('ujs:enable-with') !== undefined) {
+        element.html(element.data('ujs:enable-with')); // set to old enabled state
+        element.removeData('ujs:enable-with'); // clean up cache
+      }
+      element.unbind('click.railsDisable'); // enable element
+    }
+  };
+
+  if (rails.fire($document, 'rails:attachBindings')) {
+
+    $.ajaxPrefilter(function(options, originalOptions, xhr){ if ( !options.crossDomain ) { rails.CSRFProtection(xhr); }});
+
+    // This event works the same as the load event, except that it fires every
+    // time the page is loaded.
+    //
+    // See https://github.com/rails/jquery-ujs/issues/357
+    // See https://developer.mozilla.org/en-US/docs/Using_Firefox_1.5_caching
+    $(window).on('pageshow.rails', function () {
+      $($.rails.enableSelector).each(function () {
+        var element = $(this);
+
+        if (element.data('ujs:enable-with')) {
+          $.rails.enableFormElement(element);
+        }
+      });
+
+      $($.rails.linkDisableSelector).each(function () {
+        var element = $(this);
+
+        if (element.data('ujs:enable-with')) {
+          $.rails.enableElement(element);
+        }
+      });
+    });
+
+    $document.delegate(rails.linkDisableSelector, 'ajax:complete', function() {
+        rails.enableElement($(this));
+    });
+
+    $document.delegate(rails.buttonDisableSelector, 'ajax:complete', function() {
+        rails.enableFormElement($(this));
+    });
+
+    $document.delegate(rails.linkClickSelector, 'click.rails', function(e) {
+      var link = $(this), method = link.data('method'), data = link.data('params'), metaClick = e.metaKey || e.ctrlKey;
+      if (!rails.allowAction(link)) return rails.stopEverything(e);
+
+      if (!metaClick && link.is(rails.linkDisableSelector)) rails.disableElement(link);
+
+      if (rails.isRemote(link)) {
+        if (metaClick && (!method || method === 'GET') && !data) { return true; }
+
+        var handleRemote = rails.handleRemote(link);
+        // response from rails.handleRemote() will either be false or a deferred object promise.
+        if (handleRemote === false) {
+          rails.enableElement(link);
+        } else {
+          handleRemote.fail( function() { rails.enableElement(link); } );
+        }
+        return false;
+
+      } else if (method) {
+        rails.handleMethod(link);
+        return false;
+      }
+    });
+
+    $document.delegate(rails.buttonClickSelector, 'click.rails', function(e) {
+      var button = $(this);
+
+      if (!rails.allowAction(button) || !rails.isRemote(button)) return rails.stopEverything(e);
+
+      if (button.is(rails.buttonDisableSelector)) rails.disableFormElement(button);
+
+      var handleRemote = rails.handleRemote(button);
+      // response from rails.handleRemote() will either be false or a deferred object promise.
+      if (handleRemote === false) {
+        rails.enableFormElement(button);
+      } else {
+        handleRemote.fail( function() { rails.enableFormElement(button); } );
+      }
+      return false;
+    });
+
+    $document.delegate(rails.inputChangeSelector, 'change.rails', function(e) {
+      var link = $(this);
+      if (!rails.allowAction(link) || !rails.isRemote(link)) return rails.stopEverything(e);
+
+      rails.handleRemote(link);
+      return false;
+    });
+
+    $document.delegate(rails.formSubmitSelector, 'submit.rails', function(e) {
+      var form = $(this),
+        remote = rails.isRemote(form),
+        blankRequiredInputs,
+        nonBlankFileInputs;
+
+      if (!rails.allowAction(form)) return rails.stopEverything(e);
+
+      // skip other logic when required values are missing or file upload is present
+      if (form.attr('novalidate') === undefined) {
+        blankRequiredInputs = rails.blankInputs(form, rails.requiredInputSelector, false);
+        if (blankRequiredInputs && rails.fire(form, 'ajax:aborted:required', [blankRequiredInputs])) {
+          return rails.stopEverything(e);
+        }
+      }
+
+      if (remote) {
+        nonBlankFileInputs = rails.nonBlankInputs(form, rails.fileInputSelector);
+        if (nonBlankFileInputs) {
+          // slight timeout so that the submit button gets properly serialized
+          // (make it easy for event handler to serialize form without disabled values)
+          setTimeout(function(){ rails.disableFormElements(form); }, 13);
+          var aborted = rails.fire(form, 'ajax:aborted:file', [nonBlankFileInputs]);
+
+          // re-enable form elements if event bindings return false (canceling normal form submission)
+          if (!aborted) { setTimeout(function(){ rails.enableFormElements(form); }, 13); }
+
+          return aborted;
+        }
+
+        rails.handleRemote(form);
+        return false;
+
+      } else {
+        // slight timeout so that the submit button gets properly serialized
+        setTimeout(function(){ rails.disableFormElements(form); }, 13);
+      }
+    });
+
+    $document.delegate(rails.formInputClickSelector, 'click.rails', function(event) {
+      var button = $(this);
+
+      if (!rails.allowAction(button)) return rails.stopEverything(event);
+
+      // register the pressed submit button
+      var name = button.attr('name'),
+        data = name ? {name:name, value:button.val()} : null;
+
+      button.closest('form').data('ujs:submit-button', data);
+    });
+
+    $document.delegate(rails.formSubmitSelector, 'ajax:send.rails', function(event) {
+      if (this === event.target) rails.disableFormElements($(this));
+    });
+
+    $document.delegate(rails.formSubmitSelector, 'ajax:complete.rails', function(event) {
+      if (this === event.target) rails.enableFormElements($(this));
+    });
+
+    $(function(){
+      rails.refreshCSRFTokens();
+    });
+  }
+
+})( jQuery );
+(function() {
+  var CSRFToken, Click, ComponentUrl, EVENTS, Link, ProgressBar, browserIsntBuggy, browserSupportsCustomEvents, browserSupportsPushState, browserSupportsTurbolinks, bypassOnLoadPopstate, cacheCurrentPage, cacheSize, changePage, clone, constrainPageCacheTo, createDocument, crossOriginRedirect, currentState, enableProgressBar, enableTransitionCache, executeScriptTags, extractTitleAndBody, fetch, fetchHistory, fetchReplacement, historyStateIsDefined, initializeTurbolinks, installDocumentReadyPageEventTriggers, installHistoryChangeHandler, installJqueryAjaxSuccessPageUpdateTrigger, loadedAssets, manuallyTriggerHashChangeForFirefox, pageCache, pageChangePrevented, pagesCached, popCookie, processResponse, progressBar, recallScrollPosition, ref, referer, reflectNewUrl, reflectRedirectedUrl, rememberCurrentState, rememberCurrentUrl, rememberReferer, removeNoscriptTags, requestMethodIsSafe, resetScrollPosition, setAutofocusElement, transitionCacheEnabled, transitionCacheFor, triggerEvent, visit, xhr,
+    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty,
+    slice = [].slice,
+    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+  pageCache = {};
+
+  cacheSize = 10;
+
+  transitionCacheEnabled = false;
+
+  progressBar = null;
+
+  currentState = null;
+
+  loadedAssets = null;
+
+  referer = null;
+
+  xhr = null;
+
+  EVENTS = {
+    BEFORE_CHANGE: 'page:before-change',
+    FETCH: 'page:fetch',
+    RECEIVE: 'page:receive',
+    CHANGE: 'page:change',
+    UPDATE: 'page:update',
+    LOAD: 'page:load',
+    RESTORE: 'page:restore',
+    BEFORE_UNLOAD: 'page:before-unload',
+    EXPIRE: 'page:expire'
+  };
+
+  fetch = function(url) {
+    var cachedPage;
+    url = new ComponentUrl(url);
+    rememberReferer();
+    cacheCurrentPage();
+    if (progressBar != null) {
+      progressBar.start();
+    }
+    if (transitionCacheEnabled && (cachedPage = transitionCacheFor(url.absolute))) {
+      fetchHistory(cachedPage);
+      return fetchReplacement(url, null, false);
+    } else {
+      return fetchReplacement(url, resetScrollPosition);
+    }
+  };
+
+  transitionCacheFor = function(url) {
+    var cachedPage;
+    cachedPage = pageCache[url];
+    if (cachedPage && !cachedPage.transitionCacheDisabled) {
+      return cachedPage;
+    }
+  };
+
+  enableTransitionCache = function(enable) {
+    if (enable == null) {
+      enable = true;
+    }
+    return transitionCacheEnabled = enable;
+  };
+
+  enableProgressBar = function(enable) {
+    if (enable == null) {
+      enable = true;
+    }
+    if (!browserSupportsTurbolinks) {
+      return;
+    }
+    if (enable) {
+      return progressBar != null ? progressBar : progressBar = new ProgressBar('html');
+    } else {
+      if (progressBar != null) {
+        progressBar.uninstall();
+      }
+      return progressBar = null;
+    }
+  };
+
+  fetchReplacement = function(url, onLoadFunction, showProgressBar) {
+    if (showProgressBar == null) {
+      showProgressBar = true;
+    }
+    triggerEvent(EVENTS.FETCH, {
+      url: url.absolute
+    });
+    if (xhr != null) {
+      xhr.abort();
+    }
+    xhr = new XMLHttpRequest;
+    xhr.open('GET', url.withoutHashForIE10compatibility(), true);
+    xhr.setRequestHeader('Accept', 'text/html, application/xhtml+xml, application/xml');
+    xhr.setRequestHeader('X-XHR-Referer', referer);
+    xhr.onload = function() {
+      var doc;
+      triggerEvent(EVENTS.RECEIVE, {
+        url: url.absolute
+      });
+      if (doc = processResponse()) {
+        reflectNewUrl(url);
+        reflectRedirectedUrl();
+        changePage.apply(null, extractTitleAndBody(doc));
+        manuallyTriggerHashChangeForFirefox();
+        if (typeof onLoadFunction === "function") {
+          onLoadFunction();
+        }
+        return triggerEvent(EVENTS.LOAD);
+      } else {
+        return document.location.href = crossOriginRedirect() || url.absolute;
+      }
+    };
+    if (progressBar && showProgressBar) {
+      xhr.onprogress = (function(_this) {
+        return function(event) {
+          var percent;
+          percent = event.lengthComputable ? event.loaded / event.total * 100 : progressBar.value + (100 - progressBar.value) / 10;
+          return progressBar.advanceTo(percent);
+        };
+      })(this);
+    }
+    xhr.onloadend = function() {
+      return xhr = null;
+    };
+    xhr.onerror = function() {
+      return document.location.href = url.absolute;
+    };
+    return xhr.send();
+  };
+
+  fetchHistory = function(cachedPage) {
+    if (xhr != null) {
+      xhr.abort();
+    }
+    changePage(cachedPage.title, cachedPage.body);
+    recallScrollPosition(cachedPage);
+    return triggerEvent(EVENTS.RESTORE);
+  };
+
+  cacheCurrentPage = function() {
+    var currentStateUrl;
+    currentStateUrl = new ComponentUrl(currentState.url);
+    pageCache[currentStateUrl.absolute] = {
+      url: currentStateUrl.relative,
+      body: document.body,
+      title: document.title,
+      positionY: window.pageYOffset,
+      positionX: window.pageXOffset,
+      cachedAt: new Date().getTime(),
+      transitionCacheDisabled: document.querySelector('[data-no-transition-cache]') != null
+    };
+    return constrainPageCacheTo(cacheSize);
+  };
+
+  pagesCached = function(size) {
+    if (size == null) {
+      size = cacheSize;
+    }
+    if (/^[\d]+$/.test(size)) {
+      return cacheSize = parseInt(size);
+    }
+  };
+
+  constrainPageCacheTo = function(limit) {
+    var cacheTimesRecentFirst, i, key, len, pageCacheKeys, results;
+    pageCacheKeys = Object.keys(pageCache);
+    cacheTimesRecentFirst = pageCacheKeys.map(function(url) {
+      return pageCache[url].cachedAt;
+    }).sort(function(a, b) {
+      return b - a;
+    });
+    results = [];
+    for (i = 0, len = pageCacheKeys.length; i < len; i++) {
+      key = pageCacheKeys[i];
+      if (!(pageCache[key].cachedAt <= cacheTimesRecentFirst[limit])) {
+        continue;
+      }
+      triggerEvent(EVENTS.EXPIRE, pageCache[key]);
+      results.push(delete pageCache[key]);
+    }
+    return results;
+  };
+
+  changePage = function(title, body, csrfToken, runScripts) {
+    triggerEvent(EVENTS.BEFORE_UNLOAD);
+    document.title = title;
+    document.documentElement.replaceChild(body, document.body);
+    if (csrfToken != null) {
+      CSRFToken.update(csrfToken);
+    }
+    setAutofocusElement();
+    if (runScripts) {
+      executeScriptTags();
+    }
+    currentState = window.history.state;
+    if (progressBar != null) {
+      progressBar.done();
+    }
+    triggerEvent(EVENTS.CHANGE);
+    return triggerEvent(EVENTS.UPDATE);
+  };
+
+  executeScriptTags = function() {
+    var attr, copy, i, j, len, len1, nextSibling, parentNode, ref, ref1, script, scripts;
+    scripts = Array.prototype.slice.call(document.body.querySelectorAll('script:not([data-turbolinks-eval="false"])'));
+    for (i = 0, len = scripts.length; i < len; i++) {
+      script = scripts[i];
+      if (!((ref = script.type) === '' || ref === 'text/javascript')) {
+        continue;
+      }
+      copy = document.createElement('script');
+      ref1 = script.attributes;
+      for (j = 0, len1 = ref1.length; j < len1; j++) {
+        attr = ref1[j];
+        copy.setAttribute(attr.name, attr.value);
+      }
+      if (!script.hasAttribute('async')) {
+        copy.async = false;
+      }
+      copy.appendChild(document.createTextNode(script.innerHTML));
+      parentNode = script.parentNode, nextSibling = script.nextSibling;
+      parentNode.removeChild(script);
+      parentNode.insertBefore(copy, nextSibling);
+    }
+  };
+
+  removeNoscriptTags = function(node) {
+    node.innerHTML = node.innerHTML.replace(/<noscript[\S\s]*?<\/noscript>/ig, '');
+    return node;
+  };
+
+  setAutofocusElement = function() {
+    var autofocusElement, list;
+    autofocusElement = (list = document.querySelectorAll('input[autofocus], textarea[autofocus]'))[list.length - 1];
+    if (autofocusElement && document.activeElement !== autofocusElement) {
+      return autofocusElement.focus();
+    }
+  };
+
+  reflectNewUrl = function(url) {
+    if ((url = new ComponentUrl(url)).absolute !== referer) {
+      return window.history.pushState({
+        turbolinks: true,
+        url: url.absolute
+      }, '', url.absolute);
+    }
+  };
+
+  reflectRedirectedUrl = function() {
+    var location, preservedHash;
+    if (location = xhr.getResponseHeader('X-XHR-Redirected-To')) {
+      location = new ComponentUrl(location);
+      preservedHash = location.hasNoHash() ? document.location.hash : '';
+      return window.history.replaceState(window.history.state, '', location.href + preservedHash);
+    }
+  };
+
+  crossOriginRedirect = function() {
+    var redirect;
+    if (((redirect = xhr.getResponseHeader('Location')) != null) && (new ComponentUrl(redirect)).crossOrigin()) {
+      return redirect;
+    }
+  };
+
+  rememberReferer = function() {
+    return referer = document.location.href;
+  };
+
+  rememberCurrentUrl = function() {
+    return window.history.replaceState({
+      turbolinks: true,
+      url: document.location.href
+    }, '', document.location.href);
+  };
+
+  rememberCurrentState = function() {
+    return currentState = window.history.state;
+  };
+
+  manuallyTriggerHashChangeForFirefox = function() {
+    var url;
+    if (navigator.userAgent.match(/Firefox/) && !(url = new ComponentUrl).hasNoHash()) {
+      window.history.replaceState(currentState, '', url.withoutHash());
+      return document.location.hash = url.hash;
+    }
+  };
+
+  recallScrollPosition = function(page) {
+    return window.scrollTo(page.positionX, page.positionY);
+  };
+
+  resetScrollPosition = function() {
+    if (document.location.hash) {
+      return document.location.href = document.location.href;
+    } else {
+      return window.scrollTo(0, 0);
+    }
+  };
+
+  clone = function(original) {
+    var copy, key, value;
+    if ((original == null) || typeof original !== 'object') {
+      return original;
+    }
+    copy = new original.constructor();
+    for (key in original) {
+      value = original[key];
+      copy[key] = clone(value);
+    }
+    return copy;
+  };
+
+  popCookie = function(name) {
+    var ref, value;
+    value = ((ref = document.cookie.match(new RegExp(name + "=(\\w+)"))) != null ? ref[1].toUpperCase() : void 0) || '';
+    document.cookie = name + '=; expires=Thu, 01-Jan-70 00:00:01 GMT; path=/';
+    return value;
+  };
+
+  triggerEvent = function(name, data) {
+    var event;
+    if (typeof Prototype !== 'undefined') {
+      Event.fire(document, name, data, true);
+    }
+    event = document.createEvent('Events');
+    if (data) {
+      event.data = data;
+    }
+    event.initEvent(name, true, true);
+    return document.dispatchEvent(event);
+  };
+
+  pageChangePrevented = function(url) {
+    return !triggerEvent(EVENTS.BEFORE_CHANGE, {
+      url: url
+    });
+  };
+
+  processResponse = function() {
+    var assetsChanged, clientOrServerError, doc, extractTrackAssets, intersection, validContent;
+    clientOrServerError = function() {
+      var ref;
+      return (400 <= (ref = xhr.status) && ref < 600);
+    };
+    validContent = function() {
+      var contentType;
+      return ((contentType = xhr.getResponseHeader('Content-Type')) != null) && contentType.match(/^(?:text\/html|application\/xhtml\+xml|application\/xml)(?:;|$)/);
+    };
+    extractTrackAssets = function(doc) {
+      var i, len, node, ref, results;
+      ref = doc.querySelector('head').childNodes;
+      results = [];
+      for (i = 0, len = ref.length; i < len; i++) {
+        node = ref[i];
+        if ((typeof node.getAttribute === "function" ? node.getAttribute('data-turbolinks-track') : void 0) != null) {
+          results.push(node.getAttribute('src') || node.getAttribute('href'));
+        }
+      }
+      return results;
+    };
+    assetsChanged = function(doc) {
+      var fetchedAssets;
+      loadedAssets || (loadedAssets = extractTrackAssets(document));
+      fetchedAssets = extractTrackAssets(doc);
+      return fetchedAssets.length !== loadedAssets.length || intersection(fetchedAssets, loadedAssets).length !== loadedAssets.length;
+    };
+    intersection = function(a, b) {
+      var i, len, ref, results, value;
+      if (a.length > b.length) {
+        ref = [b, a], a = ref[0], b = ref[1];
+      }
+      results = [];
+      for (i = 0, len = a.length; i < len; i++) {
+        value = a[i];
+        if (indexOf.call(b, value) >= 0) {
+          results.push(value);
+        }
+      }
+      return results;
+    };
+    if (!clientOrServerError() && validContent()) {
+      doc = createDocument(xhr.responseText);
+      if (doc && !assetsChanged(doc)) {
+        return doc;
+      }
+    }
+  };
+
+  extractTitleAndBody = function(doc) {
+    var title;
+    title = doc.querySelector('title');
+    return [title != null ? title.textContent : void 0, removeNoscriptTags(doc.querySelector('body')), CSRFToken.get(doc).token, 'runScripts'];
+  };
+
+  CSRFToken = {
+    get: function(doc) {
+      var tag;
+      if (doc == null) {
+        doc = document;
+      }
+      return {
+        node: tag = doc.querySelector('meta[name="csrf-token"]'),
+        token: tag != null ? typeof tag.getAttribute === "function" ? tag.getAttribute('content') : void 0 : void 0
+      };
+    },
+    update: function(latest) {
+      var current;
+      current = this.get();
+      if ((current.token != null) && (latest != null) && current.token !== latest) {
+        return current.node.setAttribute('content', latest);
+      }
+    }
+  };
+
+  createDocument = function(html) {
+    var doc;
+    doc = document.documentElement.cloneNode();
+    doc.innerHTML = html;
+    doc.head = doc.querySelector('head');
+    doc.body = doc.querySelector('body');
+    return doc;
+  };
+
+  ComponentUrl = (function() {
+    function ComponentUrl(original1) {
+      this.original = original1 != null ? original1 : document.location.href;
+      if (this.original.constructor === ComponentUrl) {
+        return this.original;
+      }
+      this._parse();
+    }
+
+    ComponentUrl.prototype.withoutHash = function() {
+      return this.href.replace(this.hash, '').replace('#', '');
+    };
+
+    ComponentUrl.prototype.withoutHashForIE10compatibility = function() {
+      return this.withoutHash();
+    };
+
+    ComponentUrl.prototype.hasNoHash = function() {
+      return this.hash.length === 0;
+    };
+
+    ComponentUrl.prototype.crossOrigin = function() {
+      return this.origin !== (new ComponentUrl).origin;
+    };
+
+    ComponentUrl.prototype._parse = function() {
+      var ref;
+      (this.link != null ? this.link : this.link = document.createElement('a')).href = this.original;
+      ref = this.link, this.href = ref.href, this.protocol = ref.protocol, this.host = ref.host, this.hostname = ref.hostname, this.port = ref.port, this.pathname = ref.pathname, this.search = ref.search, this.hash = ref.hash;
+      this.origin = [this.protocol, '//', this.hostname].join('');
+      if (this.port.length !== 0) {
+        this.origin += ":" + this.port;
+      }
+      this.relative = [this.pathname, this.search, this.hash].join('');
+      return this.absolute = this.href;
+    };
+
+    return ComponentUrl;
+
+  })();
+
+  Link = (function(superClass) {
+    extend(Link, superClass);
+
+    Link.HTML_EXTENSIONS = ['html'];
+
+    Link.allowExtensions = function() {
+      var extension, extensions, i, len;
+      extensions = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+      for (i = 0, len = extensions.length; i < len; i++) {
+        extension = extensions[i];
+        Link.HTML_EXTENSIONS.push(extension);
+      }
+      return Link.HTML_EXTENSIONS;
+    };
+
+    function Link(link1) {
+      this.link = link1;
+      if (this.link.constructor === Link) {
+        return this.link;
+      }
+      this.original = this.link.href;
+      this.originalElement = this.link;
+      this.link = this.link.cloneNode(false);
+      Link.__super__.constructor.apply(this, arguments);
+    }
+
+    Link.prototype.shouldIgnore = function() {
+      return this.crossOrigin() || this._anchored() || this._nonHtml() || this._optOut() || this._target();
+    };
+
+    Link.prototype._anchored = function() {
+      return (this.hash.length > 0 || this.href.charAt(this.href.length - 1) === '#') && (this.withoutHash() === (new ComponentUrl).withoutHash());
+    };
+
+    Link.prototype._nonHtml = function() {
+      return this.pathname.match(/\.[a-z]+$/g) && !this.pathname.match(new RegExp("\\.(?:" + (Link.HTML_EXTENSIONS.join('|')) + ")?$", 'g'));
+    };
+
+    Link.prototype._optOut = function() {
+      var ignore, link;
+      link = this.originalElement;
+      while (!(ignore || link === document)) {
+        ignore = link.getAttribute('data-no-turbolink') != null;
+        link = link.parentNode;
+      }
+      return ignore;
+    };
+
+    Link.prototype._target = function() {
+      return this.link.target.length !== 0;
+    };
+
+    return Link;
+
+  })(ComponentUrl);
+
+  Click = (function() {
+    Click.installHandlerLast = function(event) {
+      if (!event.defaultPrevented) {
+        document.removeEventListener('click', Click.handle, false);
+        return document.addEventListener('click', Click.handle, false);
+      }
+    };
+
+    Click.handle = function(event) {
+      return new Click(event);
+    };
+
+    function Click(event1) {
+      this.event = event1;
+      if (this.event.defaultPrevented) {
+        return;
+      }
+      this._extractLink();
+      if (this._validForTurbolinks()) {
+        if (!pageChangePrevented(this.link.absolute)) {
+          visit(this.link.href);
+        }
+        this.event.preventDefault();
+      }
+    }
+
+    Click.prototype._extractLink = function() {
+      var link;
+      link = this.event.target;
+      while (!(!link.parentNode || link.nodeName === 'A')) {
+        link = link.parentNode;
+      }
+      if (link.nodeName === 'A' && link.href.length !== 0) {
+        return this.link = new Link(link);
+      }
+    };
+
+    Click.prototype._validForTurbolinks = function() {
+      return (this.link != null) && !(this.link.shouldIgnore() || this._nonStandardClick());
+    };
+
+    Click.prototype._nonStandardClick = function() {
+      return this.event.which > 1 || this.event.metaKey || this.event.ctrlKey || this.event.shiftKey || this.event.altKey;
+    };
+
+    return Click;
+
+  })();
+
+  ProgressBar = (function() {
+    var className;
+
+    className = 'turbolinks-progress-bar';
+
+    function ProgressBar(elementSelector) {
+      this.elementSelector = elementSelector;
+      this._trickle = bind(this._trickle, this);
+      this.value = 0;
+      this.content = '';
+      this.speed = 300;
+      this.opacity = 0.99;
+      this.install();
+    }
+
+    ProgressBar.prototype.install = function() {
+      this.element = document.querySelector(this.elementSelector);
+      this.element.classList.add(className);
+      this.styleElement = document.createElement('style');
+      document.head.appendChild(this.styleElement);
+      return this._updateStyle();
+    };
+
+    ProgressBar.prototype.uninstall = function() {
+      this.element.classList.remove(className);
+      return document.head.removeChild(this.styleElement);
+    };
+
+    ProgressBar.prototype.start = function() {
+      return this.advanceTo(5);
+    };
+
+    ProgressBar.prototype.advanceTo = function(value) {
+      var ref;
+      if ((value > (ref = this.value) && ref <= 100)) {
+        this.value = value;
+        this._updateStyle();
+        if (this.value === 100) {
+          return this._stopTrickle();
+        } else if (this.value > 0) {
+          return this._startTrickle();
+        }
+      }
+    };
+
+    ProgressBar.prototype.done = function() {
+      if (this.value > 0) {
+        this.advanceTo(100);
+        return this._reset();
+      }
+    };
+
+    ProgressBar.prototype._reset = function() {
+      var originalOpacity;
+      originalOpacity = this.opacity;
+      setTimeout((function(_this) {
+        return function() {
+          _this.opacity = 0;
+          return _this._updateStyle();
+        };
+      })(this), this.speed / 2);
+      return setTimeout((function(_this) {
+        return function() {
+          _this.value = 0;
+          _this.opacity = originalOpacity;
+          return _this._withSpeed(0, function() {
+            return _this._updateStyle(true);
+          });
+        };
+      })(this), this.speed);
+    };
+
+    ProgressBar.prototype._startTrickle = function() {
+      if (this.trickling) {
+        return;
+      }
+      this.trickling = true;
+      return setTimeout(this._trickle, this.speed);
+    };
+
+    ProgressBar.prototype._stopTrickle = function() {
+      return delete this.trickling;
+    };
+
+    ProgressBar.prototype._trickle = function() {
+      if (!this.trickling) {
+        return;
+      }
+      this.advanceTo(this.value + Math.random() / 2);
+      return setTimeout(this._trickle, this.speed);
+    };
+
+    ProgressBar.prototype._withSpeed = function(speed, fn) {
+      var originalSpeed, result;
+      originalSpeed = this.speed;
+      this.speed = speed;
+      result = fn();
+      this.speed = originalSpeed;
+      return result;
+    };
+
+    ProgressBar.prototype._updateStyle = function(forceRepaint) {
+      if (forceRepaint == null) {
+        forceRepaint = false;
+      }
+      if (forceRepaint) {
+        this._changeContentToForceRepaint();
+      }
+      return this.styleElement.textContent = this._createCSSRule();
+    };
+
+    ProgressBar.prototype._changeContentToForceRepaint = function() {
+      return this.content = this.content === '' ? ' ' : '';
+    };
+
+    ProgressBar.prototype._createCSSRule = function() {
+      return this.elementSelector + "." + className + "::before {\n  content: '" + this.content + "';\n  position: fixed;\n  top: 0;\n  left: 0;\n  z-index: 2000;\n  background-color: #0076ff;\n  height: 3px;\n  opacity: " + this.opacity + ";\n  width: " + this.value + "%;\n  transition: width " + this.speed + "ms ease-out, opacity " + (this.speed / 2) + "ms ease-in;\n  transform: translate3d(0,0,0);\n}";
+    };
+
+    return ProgressBar;
+
+  })();
+
+  bypassOnLoadPopstate = function(fn) {
+    return setTimeout(fn, 500);
+  };
+
+  installDocumentReadyPageEventTriggers = function() {
+    return document.addEventListener('DOMContentLoaded', (function() {
+      triggerEvent(EVENTS.CHANGE);
+      return triggerEvent(EVENTS.UPDATE);
+    }), true);
+  };
+
+  installJqueryAjaxSuccessPageUpdateTrigger = function() {
+    if (typeof jQuery !== 'undefined') {
+      return jQuery(document).on('ajaxSuccess', function(event, xhr, settings) {
+        if (!jQuery.trim(xhr.responseText)) {
+          return;
+        }
+        return triggerEvent(EVENTS.UPDATE);
+      });
+    }
+  };
+
+  installHistoryChangeHandler = function(event) {
+    var cachedPage, ref;
+    if ((ref = event.state) != null ? ref.turbolinks : void 0) {
+      if (cachedPage = pageCache[(new ComponentUrl(event.state.url)).absolute]) {
+        cacheCurrentPage();
+        return fetchHistory(cachedPage);
+      } else {
+        return visit(event.target.location.href);
+      }
+    }
+  };
+
+  initializeTurbolinks = function() {
+    rememberCurrentUrl();
+    rememberCurrentState();
+    document.addEventListener('click', Click.installHandlerLast, true);
+    window.addEventListener('hashchange', function(event) {
+      rememberCurrentUrl();
+      return rememberCurrentState();
+    }, false);
+    return bypassOnLoadPopstate(function() {
+      return window.addEventListener('popstate', installHistoryChangeHandler, false);
+    });
+  };
+
+  historyStateIsDefined = window.history.state !== void 0 || navigator.userAgent.match(/Firefox\/2[6|7]/);
+
+  browserSupportsPushState = window.history && window.history.pushState && window.history.replaceState && historyStateIsDefined;
+
+  browserIsntBuggy = !navigator.userAgent.match(/CriOS\//);
+
+  requestMethodIsSafe = (ref = popCookie('request_method')) === 'GET' || ref === '';
+
+  browserSupportsTurbolinks = browserSupportsPushState && browserIsntBuggy && requestMethodIsSafe;
+
+  browserSupportsCustomEvents = document.addEventListener && document.createEvent;
+
+  if (browserSupportsCustomEvents) {
+    installDocumentReadyPageEventTriggers();
+    installJqueryAjaxSuccessPageUpdateTrigger();
+  }
+
+  if (browserSupportsTurbolinks) {
+    visit = fetch;
+    initializeTurbolinks();
+  } else {
+    visit = function(url) {
+      return document.location.href = url;
+    };
+  }
+
+  this.Turbolinks = {
+    visit: visit,
+    pagesCached: pagesCached,
+    enableTransitionCache: enableTransitionCache,
+    enableProgressBar: enableProgressBar,
+    allowLinkExtensions: Link.allowExtensions,
+    supported: browserSupportsTurbolinks,
+    EVENTS: clone(EVENTS)
+  };
+
+}).call(this);
+(function() {
+
+
+}).call(this);
+// Navigation Scripts to Show Header on Scroll-Up
+jQuery(document).ready(function($) {
+  console.log("what?");
+    var MQL = 1170;
+
+    //primary navigation slide-in effect
+    if ($(window).width() > MQL) {
+      console.log("what?");
+
+        var headerHeight = $('.navbar-custom').height();
+        $(window).on('scroll', {
+                previousTop: 0
+            },
+            function() {
+                var currentTop = $(window).scrollTop();
+                //check if user is scrolling up
+                if (currentTop < this.previousTop) {
+                    //if scrolling up...
+                    if (currentTop > 0 && $('.navbar-custom').hasClass('is-fixed')) {
+                        $('.navbar-custom').addClass('is-visible');
+                        console.log("what?");
+                    } else {
+                        $('.navbar-custom').removeClass('is-visible is-fixed');
+                        console.log("what?");
+                    }
+                } else {
+                    //if scrolling down...
+                    $('.navbar-custom').removeClass('is-visible');
+                    if (currentTop > headerHeight && !$('.navbar-custom').hasClass('is-fixed')) $('.navbar-custom').addClass('is-fixed');
+                }
+                this.previousTop = currentTop;
+            });
+    }
+});
+/*!
+ * Clean Blog v1.0.0 (http://startbootstrap.com)
+ * Copyright 2014 Start Bootstrap
+ * Licensed under Apache 2.0 (https://github.com/IronSummitMedia/startbootstrap/blob/gh-pages/LICENSE)
+ */
+
+// Contact Form Scripts
+
+$(function() {
+
+    $("input,textarea").jqBootstrapValidation({
+        preventSubmit: true,
+        submitError: function($form, event, errors) {
+            // additional error messages or events
+        },
+        submitSuccess: function($form, event) {
+            event.preventDefault(); // prevent default submit behaviour
+            // get values from FORM
+            var name = $("input#name").val();
+            var email = $("input#email").val();
+            var phone = $("input#phone").val();
+            var message = $("textarea#message").val();
+            var firstName = name; // For Success/Failure Message
+            // Check for white space in name for Success/Fail message
+            if (firstName.indexOf(' ') >= 0) {
+                firstName = name.split(' ').slice(0, -1).join(' ');
+            }
+            $.ajax({
+                url: "././mail/contact_me.php",
+                type: "POST",
+                data: {
+                    name: name,
+                    phone: phone,
+                    email: email,
+                    message: message
+                },
+                cache: false,
+                success: function() {
+                    // Success message
+                    $('#success').html("<div class='alert alert-success'>");
+                    $('#success > .alert-success').html("<button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;")
+                        .append("</button>");
+                    $('#success > .alert-success')
+                        .append("<strong>Your message has been sent. </strong>");
+                    $('#success > .alert-success')
+                        .append('</div>');
+
+                    //clear all fields
+                    $('#contactForm').trigger("reset");
+                },
+                error: function() {
+                    // Fail message
+                    $('#success').html("<div class='alert alert-danger'>");
+                    $('#success > .alert-danger').html("<button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;")
+                        .append("</button>");
+                    $('#success > .alert-danger').append("<strong>Sorry " + firstName + ", it seems that my mail server is not responding. Please try again later!");
+                    $('#success > .alert-danger').append('</div>');
+                    //clear all fields
+                    $('#contactForm').trigger("reset");
+                },
+            })
+        },
+        filter: function() {
+            return $(this).is(":visible");
+        },
+    });
+
+    $("a[data-toggle=\"tab\"]").click(function(e) {
+        e.preventDefault();
+        $(this).tab("show");
+    });
+});
+
+
+/*When clicking on Full hide fail/success boxes */
+$('#name').focus(function() {
+    $('#success').html('');
+});
+
+ // jqBootstrapValidation
+ // * A plugin for automating validation on Twitter Bootstrap formatted forms.
+ // *
+ // * v1.3.6
+ // *
+ // * License: MIT <http://opensource.org/licenses/mit-license.php> - see LICENSE file
+ // *
+ // * http://ReactiveRaven.github.com/jqBootstrapValidation/
+ 
+
+(function( $ ){
+
+	var createdElements = [];
+
+	var defaults = {
+		options: {
+			prependExistingHelpBlock: false,
+			sniffHtml: true, // sniff for 'required', 'maxlength', etc
+			preventSubmit: true, // stop the form submit event from firing if validation fails
+			submitError: false, // function called if there is an error when trying to submit
+			submitSuccess: false, // function called just before a successful submit event is sent to the server
+            semanticallyStrict: false, // set to true to tidy up generated HTML output
+			autoAdd: {
+				helpBlocks: true
+			},
+            filter: function () {
+                // return $(this).is(":visible"); // only validate elements you can see
+                return true; // validate everything
+            }
+		},
+    methods: {
+      init : function( options ) {
+
+        var settings = $.extend(true, {}, defaults);
+
+        settings.options = $.extend(true, settings.options, options);
+
+        var $siblingElements = this;
+
+        var uniqueForms = $.unique(
+          $siblingElements.map( function () {
+            return $(this).parents("form")[0];
+          }).toArray()
+        );
+
+        $(uniqueForms).bind("submit", function (e) {
+          var $form = $(this);
+          var warningsFound = 0;
+          var $inputs = $form.find("input,textarea,select").not("[type=submit],[type=image]").filter(settings.options.filter);
+          $inputs.trigger("submit.validation").trigger("validationLostFocus.validation");
+
+          $inputs.each(function (i, el) {
+            var $this = $(el),
+              $controlGroup = $this.parents(".form-group").first();
+            if (
+              $controlGroup.hasClass("warning")
+            ) {
+              $controlGroup.removeClass("warning").addClass("error");
+              warningsFound++;
+            }
+          });
+
+          $inputs.trigger("validationLostFocus.validation");
+
+          if (warningsFound) {
+            if (settings.options.preventSubmit) {
+              e.preventDefault();
+            }
+            $form.addClass("error");
+            if ($.isFunction(settings.options.submitError)) {
+              settings.options.submitError($form, e, $inputs.jqBootstrapValidation("collectErrors", true));
+            }
+          } else {
+            $form.removeClass("error");
+            if ($.isFunction(settings.options.submitSuccess)) {
+              settings.options.submitSuccess($form, e);
+            }
+          }
+        });
+
+        return this.each(function(){
+
+          // Get references to everything we're interested in
+          var $this = $(this),
+            $controlGroup = $this.parents(".form-group").first(),
+            $helpBlock = $controlGroup.find(".help-block").first(),
+            $form = $this.parents("form").first(),
+            validatorNames = [];
+
+          // create message container if not exists
+          if (!$helpBlock.length && settings.options.autoAdd && settings.options.autoAdd.helpBlocks) {
+              $helpBlock = $('<div class="help-block" />');
+              $controlGroup.find('.controls').append($helpBlock);
+							createdElements.push($helpBlock[0]);
+          }
+
+          // =============================================================
+          //                                     SNIFF HTML FOR VALIDATORS
+          // =============================================================
+
+          // *snort sniff snuffle*
+
+          if (settings.options.sniffHtml) {
+            var message = "";
+            // ---------------------------------------------------------
+            //                                                   PATTERN
+            // ---------------------------------------------------------
+            if ($this.attr("pattern") !== undefined) {
+              message = "Not in the expected format<!-- data-validation-pattern-message to override -->";
+              if ($this.data("validationPatternMessage")) {
+                message = $this.data("validationPatternMessage");
+              }
+              $this.data("validationPatternMessage", message);
+              $this.data("validationPatternRegex", $this.attr("pattern"));
+            }
+            // ---------------------------------------------------------
+            //                                                       MAX
+            // ---------------------------------------------------------
+            if ($this.attr("max") !== undefined || $this.attr("aria-valuemax") !== undefined) {
+              var max = ($this.attr("max") !== undefined ? $this.attr("max") : $this.attr("aria-valuemax"));
+              message = "Too high: Maximum of '" + max + "'<!-- data-validation-max-message to override -->";
+              if ($this.data("validationMaxMessage")) {
+                message = $this.data("validationMaxMessage");
+              }
+              $this.data("validationMaxMessage", message);
+              $this.data("validationMaxMax", max);
+            }
+            // ---------------------------------------------------------
+            //                                                       MIN
+            // ---------------------------------------------------------
+            if ($this.attr("min") !== undefined || $this.attr("aria-valuemin") !== undefined) {
+              var min = ($this.attr("min") !== undefined ? $this.attr("min") : $this.attr("aria-valuemin"));
+              message = "Too low: Minimum of '" + min + "'<!-- data-validation-min-message to override -->";
+              if ($this.data("validationMinMessage")) {
+                message = $this.data("validationMinMessage");
+              }
+              $this.data("validationMinMessage", message);
+              $this.data("validationMinMin", min);
+            }
+            // ---------------------------------------------------------
+            //                                                 MAXLENGTH
+            // ---------------------------------------------------------
+            if ($this.attr("maxlength") !== undefined) {
+              message = "Too long: Maximum of '" + $this.attr("maxlength") + "' characters<!-- data-validation-maxlength-message to override -->";
+              if ($this.data("validationMaxlengthMessage")) {
+                message = $this.data("validationMaxlengthMessage");
+              }
+              $this.data("validationMaxlengthMessage", message);
+              $this.data("validationMaxlengthMaxlength", $this.attr("maxlength"));
+            }
+            // ---------------------------------------------------------
+            //                                                 MINLENGTH
+            // ---------------------------------------------------------
+            if ($this.attr("minlength") !== undefined) {
+              message = "Too short: Minimum of '" + $this.attr("minlength") + "' characters<!-- data-validation-minlength-message to override -->";
+              if ($this.data("validationMinlengthMessage")) {
+                message = $this.data("validationMinlengthMessage");
+              }
+              $this.data("validationMinlengthMessage", message);
+              $this.data("validationMinlengthMinlength", $this.attr("minlength"));
+            }
+            // ---------------------------------------------------------
+            //                                                  REQUIRED
+            // ---------------------------------------------------------
+            if ($this.attr("required") !== undefined || $this.attr("aria-required") !== undefined) {
+              message = settings.builtInValidators.required.message;
+              if ($this.data("validationRequiredMessage")) {
+                message = $this.data("validationRequiredMessage");
+              }
+              $this.data("validationRequiredMessage", message);
+            }
+            // ---------------------------------------------------------
+            //                                                    NUMBER
+            // ---------------------------------------------------------
+            if ($this.attr("type") !== undefined && $this.attr("type").toLowerCase() === "number") {
+              message = settings.builtInValidators.number.message;
+              if ($this.data("validationNumberMessage")) {
+                message = $this.data("validationNumberMessage");
+              }
+              $this.data("validationNumberMessage", message);
+            }
+            // ---------------------------------------------------------
+            //                                                     EMAIL
+            // ---------------------------------------------------------
+            if ($this.attr("type") !== undefined && $this.attr("type").toLowerCase() === "email") {
+              message = "Not a valid email address<!-- data-validator-validemail-message to override -->";
+              if ($this.data("validationValidemailMessage")) {
+                message = $this.data("validationValidemailMessage");
+              } else if ($this.data("validationEmailMessage")) {
+                message = $this.data("validationEmailMessage");
+              }
+              $this.data("validationValidemailMessage", message);
+            }
+            // ---------------------------------------------------------
+            //                                                MINCHECKED
+            // ---------------------------------------------------------
+            if ($this.attr("minchecked") !== undefined) {
+              message = "Not enough options checked; Minimum of '" + $this.attr("minchecked") + "' required<!-- data-validation-minchecked-message to override -->";
+              if ($this.data("validationMincheckedMessage")) {
+                message = $this.data("validationMincheckedMessage");
+              }
+              $this.data("validationMincheckedMessage", message);
+              $this.data("validationMincheckedMinchecked", $this.attr("minchecked"));
+            }
+            // ---------------------------------------------------------
+            //                                                MAXCHECKED
+            // ---------------------------------------------------------
+            if ($this.attr("maxchecked") !== undefined) {
+              message = "Too many options checked; Maximum of '" + $this.attr("maxchecked") + "' required<!-- data-validation-maxchecked-message to override -->";
+              if ($this.data("validationMaxcheckedMessage")) {
+                message = $this.data("validationMaxcheckedMessage");
+              }
+              $this.data("validationMaxcheckedMessage", message);
+              $this.data("validationMaxcheckedMaxchecked", $this.attr("maxchecked"));
+            }
+          }
+
+          // =============================================================
+          //                                       COLLECT VALIDATOR NAMES
+          // =============================================================
+
+          // Get named validators
+          if ($this.data("validation") !== undefined) {
+            validatorNames = $this.data("validation").split(",");
+          }
+
+          // Get extra ones defined on the element's data attributes
+          $.each($this.data(), function (i, el) {
+            var parts = i.replace(/([A-Z])/g, ",$1").split(",");
+            if (parts[0] === "validation" && parts[1]) {
+              validatorNames.push(parts[1]);
+            }
+          });
+
+          // =============================================================
+          //                                     NORMALISE VALIDATOR NAMES
+          // =============================================================
+
+          var validatorNamesToInspect = validatorNames;
+          var newValidatorNamesToInspect = [];
+
+          do // repeatedly expand 'shortcut' validators into their real validators
+          {
+            // Uppercase only the first letter of each name
+            $.each(validatorNames, function (i, el) {
+              validatorNames[i] = formatValidatorName(el);
+            });
+
+            // Remove duplicate validator names
+            validatorNames = $.unique(validatorNames);
+
+            // Pull out the new validator names from each shortcut
+            newValidatorNamesToInspect = [];
+            $.each(validatorNamesToInspect, function(i, el) {
+              if ($this.data("validation" + el + "Shortcut") !== undefined) {
+                // Are these custom validators?
+                // Pull them out!
+                $.each($this.data("validation" + el + "Shortcut").split(","), function(i2, el2) {
+                  newValidatorNamesToInspect.push(el2);
+                });
+              } else if (settings.builtInValidators[el.toLowerCase()]) {
+                // Is this a recognised built-in?
+                // Pull it out!
+                var validator = settings.builtInValidators[el.toLowerCase()];
+                if (validator.type.toLowerCase() === "shortcut") {
+                  $.each(validator.shortcut.split(","), function (i, el) {
+                    el = formatValidatorName(el);
+                    newValidatorNamesToInspect.push(el);
+                    validatorNames.push(el);
+                  });
+                }
+              }
+            });
+
+            validatorNamesToInspect = newValidatorNamesToInspect;
+
+          } while (validatorNamesToInspect.length > 0)
+
+          // =============================================================
+          //                                       SET UP VALIDATOR ARRAYS
+          // =============================================================
+
+          var validators = {};
+
+          $.each(validatorNames, function (i, el) {
+            // Set up the 'override' message
+            var message = $this.data("validation" + el + "Message");
+            var hasOverrideMessage = (message !== undefined);
+            var foundValidator = false;
+            message =
+              (
+                message
+                  ? message
+                  : "'" + el + "' validation failed <!-- Add attribute 'data-validation-" + el.toLowerCase() + "-message' to input to change this message -->"
+              )
+            ;
+
+            $.each(
+              settings.validatorTypes,
+              function (validatorType, validatorTemplate) {
+                if (validators[validatorType] === undefined) {
+                  validators[validatorType] = [];
+                }
+                if (!foundValidator && $this.data("validation" + el + formatValidatorName(validatorTemplate.name)) !== undefined) {
+                  validators[validatorType].push(
+                    $.extend(
+                      true,
+                      {
+                        name: formatValidatorName(validatorTemplate.name),
+                        message: message
+                      },
+                      validatorTemplate.init($this, el)
+                    )
+                  );
+                  foundValidator = true;
+                }
+              }
+            );
+
+            if (!foundValidator && settings.builtInValidators[el.toLowerCase()]) {
+
+              var validator = $.extend(true, {}, settings.builtInValidators[el.toLowerCase()]);
+              if (hasOverrideMessage) {
+                validator.message = message;
+              }
+              var validatorType = validator.type.toLowerCase();
+
+              if (validatorType === "shortcut") {
+                foundValidator = true;
+              } else {
+                $.each(
+                  settings.validatorTypes,
+                  function (validatorTemplateType, validatorTemplate) {
+                    if (validators[validatorTemplateType] === undefined) {
+                      validators[validatorTemplateType] = [];
+                    }
+                    if (!foundValidator && validatorType === validatorTemplateType.toLowerCase()) {
+                      $this.data("validation" + el + formatValidatorName(validatorTemplate.name), validator[validatorTemplate.name.toLowerCase()]);
+                      validators[validatorType].push(
+                        $.extend(
+                          validator,
+                          validatorTemplate.init($this, el)
+                        )
+                      );
+                      foundValidator = true;
+                    }
+                  }
+                );
+              }
+            }
+
+            if (! foundValidator) {
+              $.error("Cannot find validation info for '" + el + "'");
+            }
+          });
+
+          // =============================================================
+          //                                         STORE FALLBACK VALUES
+          // =============================================================
+
+          $helpBlock.data(
+            "original-contents",
+            (
+              $helpBlock.data("original-contents")
+                ? $helpBlock.data("original-contents")
+                : $helpBlock.html()
+            )
+          );
+
+          $helpBlock.data(
+            "original-role",
+            (
+              $helpBlock.data("original-role")
+                ? $helpBlock.data("original-role")
+                : $helpBlock.attr("role")
+            )
+          );
+
+          $controlGroup.data(
+            "original-classes",
+            (
+              $controlGroup.data("original-clases")
+                ? $controlGroup.data("original-classes")
+                : $controlGroup.attr("class")
+            )
+          );
+
+          $this.data(
+            "original-aria-invalid",
+            (
+              $this.data("original-aria-invalid")
+                ? $this.data("original-aria-invalid")
+                : $this.attr("aria-invalid")
+            )
+          );
+
+          // =============================================================
+          //                                                    VALIDATION
+          // =============================================================
+
+          $this.bind(
+            "validation.validation",
+            function (event, params) {
+
+              var value = getValue($this);
+
+              // Get a list of the errors to apply
+              var errorsFound = [];
+
+              $.each(validators, function (validatorType, validatorTypeArray) {
+                if (value || value.length || (params && params.includeEmpty) || (!!settings.validatorTypes[validatorType].blockSubmit && params && !!params.submitting)) {
+                  $.each(validatorTypeArray, function (i, validator) {
+                    if (settings.validatorTypes[validatorType].validate($this, value, validator)) {
+                      errorsFound.push(validator.message);
+                    }
+                  });
+                }
+              });
+
+              return errorsFound;
+            }
+          );
+
+          $this.bind(
+            "getValidators.validation",
+            function () {
+              return validators;
+            }
+          );
+
+          // =============================================================
+          //                                             WATCH FOR CHANGES
+          // =============================================================
+          $this.bind(
+            "submit.validation",
+            function () {
+              return $this.triggerHandler("change.validation", {submitting: true});
+            }
+          );
+          $this.bind(
+            [
+              "keyup",
+              "focus",
+              "blur",
+              "click",
+              "keydown",
+              "keypress",
+              "change"
+            ].join(".validation ") + ".validation",
+            function (e, params) {
+
+              var value = getValue($this);
+
+              var errorsFound = [];
+
+              $controlGroup.find("input,textarea,select").each(function (i, el) {
+                var oldCount = errorsFound.length;
+                $.each($(el).triggerHandler("validation.validation", params), function (j, message) {
+                  errorsFound.push(message);
+                });
+                if (errorsFound.length > oldCount) {
+                  $(el).attr("aria-invalid", "true");
+                } else {
+                  var original = $this.data("original-aria-invalid");
+                  $(el).attr("aria-invalid", (original !== undefined ? original : false));
+                }
+              });
+
+              $form.find("input,select,textarea").not($this).not("[name=\"" + $this.attr("name") + "\"]").trigger("validationLostFocus.validation");
+
+              errorsFound = $.unique(errorsFound.sort());
+
+              // Were there any errors?
+              if (errorsFound.length) {
+                // Better flag it up as a warning.
+                $controlGroup.removeClass("success error").addClass("warning");
+
+                // How many errors did we find?
+                if (settings.options.semanticallyStrict && errorsFound.length === 1) {
+                  // Only one? Being strict? Just output it.
+                  $helpBlock.html(errorsFound[0] + 
+                    ( settings.options.prependExistingHelpBlock ? $helpBlock.data("original-contents") : "" ));
+                } else {
+                  // Multiple? Being sloppy? Glue them together into an UL.
+                  $helpBlock.html("<ul role=\"alert\"><li>" + errorsFound.join("</li><li>") + "</li></ul>" +
+                    ( settings.options.prependExistingHelpBlock ? $helpBlock.data("original-contents") : "" ));
+                }
+              } else {
+                $controlGroup.removeClass("warning error success");
+                if (value.length > 0) {
+                  $controlGroup.addClass("success");
+                }
+                $helpBlock.html($helpBlock.data("original-contents"));
+              }
+
+              if (e.type === "blur") {
+                $controlGroup.removeClass("success");
+              }
+            }
+          );
+          $this.bind("validationLostFocus.validation", function () {
+            $controlGroup.removeClass("success");
+          });
+        });
+      },
+      destroy : function( ) {
+
+        return this.each(
+          function() {
+
+            var
+              $this = $(this),
+              $controlGroup = $this.parents(".form-group").first(),
+              $helpBlock = $controlGroup.find(".help-block").first();
+
+            // remove our events
+            $this.unbind('.validation'); // events are namespaced.
+            // reset help text
+            $helpBlock.html($helpBlock.data("original-contents"));
+            // reset classes
+            $controlGroup.attr("class", $controlGroup.data("original-classes"));
+            // reset aria
+            $this.attr("aria-invalid", $this.data("original-aria-invalid"));
+            // reset role
+            $helpBlock.attr("role", $this.data("original-role"));
+						// remove all elements we created
+						if (createdElements.indexOf($helpBlock[0]) > -1) {
+							$helpBlock.remove();
+						}
+
+          }
+        );
+
+      },
+      collectErrors : function(includeEmpty) {
+
+        var errorMessages = {};
+        this.each(function (i, el) {
+          var $el = $(el);
+          var name = $el.attr("name");
+          var errors = $el.triggerHandler("validation.validation", {includeEmpty: true});
+          errorMessages[name] = $.extend(true, errors, errorMessages[name]);
+        });
+
+        $.each(errorMessages, function (i, el) {
+          if (el.length === 0) {
+            delete errorMessages[i];
+          }
+        });
+
+        return errorMessages;
+
+      },
+      hasErrors: function() {
+
+        var errorMessages = [];
+
+        this.each(function (i, el) {
+          errorMessages = errorMessages.concat(
+            $(el).triggerHandler("getValidators.validation") ? $(el).triggerHandler("validation.validation", {submitting: true}) : []
+          );
+        });
+
+        return (errorMessages.length > 0);
+      },
+      override : function (newDefaults) {
+        defaults = $.extend(true, defaults, newDefaults);
+      }
+    },
+		validatorTypes: {
+      callback: {
+        name: "callback",
+        init: function ($this, name) {
+          return {
+            validatorName: name,
+            callback: $this.data("validation" + name + "Callback"),
+            lastValue: $this.val(),
+            lastValid: true,
+            lastFinished: true
+          };
+        },
+        validate: function ($this, value, validator) {
+          if (validator.lastValue === value && validator.lastFinished) {
+            return !validator.lastValid;
+          }
+
+          if (validator.lastFinished === true)
+          {
+            validator.lastValue = value;
+            validator.lastValid = true;
+            validator.lastFinished = false;
+
+            var rrjqbvValidator = validator;
+            var rrjqbvThis = $this;
+            executeFunctionByName(
+              validator.callback,
+              window,
+              $this,
+              value,
+              function (data) {
+                if (rrjqbvValidator.lastValue === data.value) {
+                  rrjqbvValidator.lastValid = data.valid;
+                  if (data.message) {
+                    rrjqbvValidator.message = data.message;
+                  }
+                  rrjqbvValidator.lastFinished = true;
+                  rrjqbvThis.data("validation" + rrjqbvValidator.validatorName + "Message", rrjqbvValidator.message);
+                  // Timeout is set to avoid problems with the events being considered 'already fired'
+                  setTimeout(function () {
+                    rrjqbvThis.trigger("change.validation");
+                  }, 1); // doesn't need a long timeout, just long enough for the event bubble to burst
+                }
+              }
+            );
+          }
+
+          return false;
+
+        }
+      },
+      ajax: {
+        name: "ajax",
+        init: function ($this, name) {
+          return {
+            validatorName: name,
+            url: $this.data("validation" + name + "Ajax"),
+            lastValue: $this.val(),
+            lastValid: true,
+            lastFinished: true
+          };
+        },
+        validate: function ($this, value, validator) {
+          if (""+validator.lastValue === ""+value && validator.lastFinished === true) {
+            return validator.lastValid === false;
+          }
+
+          if (validator.lastFinished === true)
+          {
+            validator.lastValue = value;
+            validator.lastValid = true;
+            validator.lastFinished = false;
+            $.ajax({
+              url: validator.url,
+              data: "value=" + value + "&field=" + $this.attr("name"),
+              dataType: "json",
+              success: function (data) {
+                if (""+validator.lastValue === ""+data.value) {
+                  validator.lastValid = !!(data.valid);
+                  if (data.message) {
+                    validator.message = data.message;
+                  }
+                  validator.lastFinished = true;
+                  $this.data("validation" + validator.validatorName + "Message", validator.message);
+                  // Timeout is set to avoid problems with the events being considered 'already fired'
+                  setTimeout(function () {
+                    $this.trigger("change.validation");
+                  }, 1); // doesn't need a long timeout, just long enough for the event bubble to burst
+                }
+              },
+              failure: function () {
+                validator.lastValid = true;
+                validator.message = "ajax call failed";
+                validator.lastFinished = true;
+                $this.data("validation" + validator.validatorName + "Message", validator.message);
+                // Timeout is set to avoid problems with the events being considered 'already fired'
+                setTimeout(function () {
+                  $this.trigger("change.validation");
+                }, 1); // doesn't need a long timeout, just long enough for the event bubble to burst
+              }
+            });
+          }
+
+          return false;
+
+        }
+      },
+			regex: {
+				name: "regex",
+				init: function ($this, name) {
+					return {regex: regexFromString($this.data("validation" + name + "Regex"))};
+				},
+				validate: function ($this, value, validator) {
+					return (!validator.regex.test(value) && ! validator.negative)
+						|| (validator.regex.test(value) && validator.negative);
+				}
+			},
+			required: {
+				name: "required",
+				init: function ($this, name) {
+					return {};
+				},
+				validate: function ($this, value, validator) {
+					return !!(value.length === 0  && ! validator.negative)
+						|| !!(value.length > 0 && validator.negative);
+				},
+        blockSubmit: true
+			},
+			match: {
+				name: "match",
+				init: function ($this, name) {
+					var element = $this.parents("form").first().find("[name=\"" + $this.data("validation" + name + "Match") + "\"]").first();
+					element.bind("validation.validation", function () {
+						$this.trigger("change.validation", {submitting: true});
+					});
+					return {"element": element};
+				},
+				validate: function ($this, value, validator) {
+					return (value !== validator.element.val() && ! validator.negative)
+						|| (value === validator.element.val() && validator.negative);
+				},
+        blockSubmit: true
+			},
+			max: {
+				name: "max",
+				init: function ($this, name) {
+					return {max: $this.data("validation" + name + "Max")};
+				},
+				validate: function ($this, value, validator) {
+					return (parseFloat(value, 10) > parseFloat(validator.max, 10) && ! validator.negative)
+						|| (parseFloat(value, 10) <= parseFloat(validator.max, 10) && validator.negative);
+				}
+			},
+			min: {
+				name: "min",
+				init: function ($this, name) {
+					return {min: $this.data("validation" + name + "Min")};
+				},
+				validate: function ($this, value, validator) {
+					return (parseFloat(value) < parseFloat(validator.min) && ! validator.negative)
+						|| (parseFloat(value) >= parseFloat(validator.min) && validator.negative);
+				}
+			},
+			maxlength: {
+				name: "maxlength",
+				init: function ($this, name) {
+					return {maxlength: $this.data("validation" + name + "Maxlength")};
+				},
+				validate: function ($this, value, validator) {
+					return ((value.length > validator.maxlength) && ! validator.negative)
+						|| ((value.length <= validator.maxlength) && validator.negative);
+				}
+			},
+			minlength: {
+				name: "minlength",
+				init: function ($this, name) {
+					return {minlength: $this.data("validation" + name + "Minlength")};
+				},
+				validate: function ($this, value, validator) {
+					return ((value.length < validator.minlength) && ! validator.negative)
+						|| ((value.length >= validator.minlength) && validator.negative);
+				}
+			},
+			maxchecked: {
+				name: "maxchecked",
+				init: function ($this, name) {
+					var elements = $this.parents("form").first().find("[name=\"" + $this.attr("name") + "\"]");
+					elements.bind("click.validation", function () {
+						$this.trigger("change.validation", {includeEmpty: true});
+					});
+					return {maxchecked: $this.data("validation" + name + "Maxchecked"), elements: elements};
+				},
+				validate: function ($this, value, validator) {
+					return (validator.elements.filter(":checked").length > validator.maxchecked && ! validator.negative)
+						|| (validator.elements.filter(":checked").length <= validator.maxchecked && validator.negative);
+				},
+        blockSubmit: true
+			},
+			minchecked: {
+				name: "minchecked",
+				init: function ($this, name) {
+					var elements = $this.parents("form").first().find("[name=\"" + $this.attr("name") + "\"]");
+					elements.bind("click.validation", function () {
+						$this.trigger("change.validation", {includeEmpty: true});
+					});
+					return {minchecked: $this.data("validation" + name + "Minchecked"), elements: elements};
+				},
+				validate: function ($this, value, validator) {
+					return (validator.elements.filter(":checked").length < validator.minchecked && ! validator.negative)
+						|| (validator.elements.filter(":checked").length >= validator.minchecked && validator.negative);
+				},
+        blockSubmit: true
+			}
+		},
+		builtInValidators: {
+			email: {
+				name: "Email",
+				type: "shortcut",
+				shortcut: "validemail"
+			},
+			validemail: {
+				name: "Validemail",
+				type: "regex",
+				regex: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\\.[A-Za-z]{2,4}",
+				message: "Not a valid email address<!-- data-validator-validemail-message to override -->"
+			},
+			passwordagain: {
+				name: "Passwordagain",
+				type: "match",
+				match: "password",
+				message: "Does not match the given password<!-- data-validator-paswordagain-message to override -->"
+			},
+			positive: {
+				name: "Positive",
+				type: "shortcut",
+				shortcut: "number,positivenumber"
+			},
+			negative: {
+				name: "Negative",
+				type: "shortcut",
+				shortcut: "number,negativenumber"
+			},
+			number: {
+				name: "Number",
+				type: "regex",
+				regex: "([+-]?\\\d+(\\\.\\\d*)?([eE][+-]?[0-9]+)?)?",
+				message: "Must be a number<!-- data-validator-number-message to override -->"
+			},
+			integer: {
+				name: "Integer",
+				type: "regex",
+				regex: "[+-]?\\\d+",
+				message: "No decimal places allowed<!-- data-validator-integer-message to override -->"
+			},
+			positivenumber: {
+				name: "Positivenumber",
+				type: "min",
+				min: 0,
+				message: "Must be a positive number<!-- data-validator-positivenumber-message to override -->"
+			},
+			negativenumber: {
+				name: "Negativenumber",
+				type: "max",
+				max: 0,
+				message: "Must be a negative number<!-- data-validator-negativenumber-message to override -->"
+			},
+			required: {
+				name: "Required",
+				type: "required",
+				message: "This is required<!-- data-validator-required-message to override -->"
+			},
+			checkone: {
+				name: "Checkone",
+				type: "minchecked",
+				minchecked: 1,
+				message: "Check at least one option<!-- data-validation-checkone-message to override -->"
+			}
+		}
+	};
+
+	var formatValidatorName = function (name) {
+		return name
+			.toLowerCase()
+			.replace(
+				/(^|\s)([a-z])/g ,
+				function(m,p1,p2) {
+					return p1+p2.toUpperCase();
+				}
+			)
+		;
+	};
+
+	var getValue = function ($this) {
+		// Extract the value we're talking about
+		var value = $this.val();
+		var type = $this.attr("type");
+		if (type === "checkbox") {
+			value = ($this.is(":checked") ? value : "");
+		}
+		if (type === "radio") {
+			value = ($('input[name="' + $this.attr("name") + '"]:checked').length > 0 ? value : "");
+		}
+		return value;
+	};
+
+  function regexFromString(inputstring) {
+		return new RegExp("^" + inputstring + "$");
+	}
+
+  /**
+   * Thanks to Jason Bunting via StackOverflow.com
+   *
+   * http://stackoverflow.com/questions/359788/how-to-execute-a-javascript-function-when-i-have-its-name-as-a-string#answer-359910
+   * Short link: http://tinyurl.com/executeFunctionByName
+  **/
+  function executeFunctionByName(functionName, context /*, args*/) {
+    var args = Array.prototype.slice.call(arguments).splice(2);
+    var namespaces = functionName.split(".");
+    var func = namespaces.pop();
+    for(var i = 0; i < namespaces.length; i++) {
+      context = context[namespaces[i]];
+    }
+    return context[func].apply(this, args);
+  }
+
+	$.fn.jqBootstrapValidation = function( method ) {
+
+		if ( defaults.methods[method] ) {
+			return defaults.methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+		} else if ( typeof method === 'object' || ! method ) {
+			return defaults.methods.init.apply( this, arguments );
+		} else {
+		$.error( 'Method ' +  method + ' does not exist on jQuery.jqBootstrapValidation' );
+			return null;
+		}
+
+	};
+
+  $.jqBootstrapValidation = function (options) {
+    $(":input").not("[type=image],[type=submit]").jqBootstrapValidation.apply(this,arguments);
+  };
+
+})( jQuery );
+
+// Floating label headings for the contact form
+$(function() {
+    $("body").on("input propertychange", ".floating-label-form-group", function(e) {
+        $(this).toggleClass("floating-label-form-group-with-value", !!$(e.target).val());
+    }).on("focus", ".floating-label-form-group", function() {
+        $(this).addClass("floating-label-form-group-with-focus");
+    }).on("blur", ".floating-label-form-group", function() {
+        $(this).removeClass("floating-label-form-group-with-focus");
+    });
+});
+
+// Navigation Scripts to Show Header on Scroll-Up
+jQuery(document).ready(function($) {
+    var MQL = 1170;
+
+    //primary navigation slide-in effect
+    if ($(window).width() > MQL) {
+        var headerHeight = $('.navbar-custom').height();
+        $(window).on('scroll', {
+                previousTop: 0
+            },
+            function() {
+                var currentTop = $(window).scrollTop();
+                //check if user is scrolling up
+                if (currentTop < this.previousTop) {
+                    //if scrolling up...
+                    if (currentTop > 0 && $('.navbar-custom').hasClass('is-fixed')) {
+                        $('.navbar-custom').addClass('is-visible');
+                    } else {
+                        $('.navbar-custom').removeClass('is-visible is-fixed');
+                    }
+                } else {
+                    //if scrolling down...
+                    $('.navbar-custom').removeClass('is-visible');
+                    if (currentTop > headerHeight && !$('.navbar-custom').hasClass('is-fixed')) $('.navbar-custom').addClass('is-fixed');
+                }
+                this.previousTop = currentTop;
+            });
+    }
+});
+/*!
+ * Clean Blog v1.0.0 (http://startbootstrap.com)
+ * Copyright 2014 Start Bootstrap
+ * Licensed under Apache 2.0 (https://github.com/IronSummitMedia/startbootstrap/blob/gh-pages/LICENSE)
+ */
+
+
+$(function(){$("input,textarea").jqBootstrapValidation({preventSubmit:!0,submitError:function(){},submitSuccess:function(a,b){b.preventDefault();var c=$("input#name").val(),d=$("input#email").val(),e=$("input#phone").val(),f=$("textarea#message").val(),g=c;g.indexOf(" ")>=0&&(g=c.split(" ").slice(0,-1).join(" ")),$.ajax({url:"././mail/contact_me.php",type:"POST",data:{name:c,phone:e,email:d,message:f},cache:!1,success:function(){$("#success").html("<div class='alert alert-success'>"),$("#success > .alert-success").html("<button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;").append("</button>"),$("#success > .alert-success").append("<strong>Your message has been sent. </strong>"),$("#success > .alert-success").append("</div>"),$("#contactForm").trigger("reset")},error:function(){$("#success").html("<div class='alert alert-danger'>"),$("#success > .alert-danger").html("<button type='button' class='close' data-dismiss='alert' aria-hidden='true'>&times;").append("</button>"),$("#success > .alert-danger").append("<strong>Sorry "+g+", it seems that my mail server is not responding. Please try again later!"),$("#success > .alert-danger").append("</div>"),$("#contactForm").trigger("reset")}})},filter:function(){return $(this).is(":visible")}}),$('a[data-toggle="tab"]').click(function(a){a.preventDefault(),$(this).tab("show")})}),$("#name").focus(function(){$("#success").html("")}),function(a){function b(a){return new RegExp("^"+a+"$")}function c(a,b){for(var c=Array.prototype.slice.call(arguments).splice(2),d=a.split("."),e=d.pop(),f=0;f<d.length;f++)b=b[d[f]];return b[e].apply(this,c)}var d=[],e={options:{prependExistingHelpBlock:!1,sniffHtml:!0,preventSubmit:!0,submitError:!1,submitSuccess:!1,semanticallyStrict:!1,autoAdd:{helpBlocks:!0},filter:function(){return!0}},methods:{init:function(b){var c=a.extend(!0,{},e);c.options=a.extend(!0,c.options,b);var h=this,i=a.unique(h.map(function(){return a(this).parents("form")[0]}).toArray());return a(i).bind("submit",function(b){var d=a(this),e=0,f=d.find("input,textarea,select").not("[type=submit],[type=image]").filter(c.options.filter);f.trigger("submit.validation").trigger("validationLostFocus.validation"),f.each(function(b,c){var d=a(c),f=d.parents(".form-group").first();f.hasClass("warning")&&(f.removeClass("warning").addClass("error"),e++)}),f.trigger("validationLostFocus.validation"),e?(c.options.preventSubmit&&b.preventDefault(),d.addClass("error"),a.isFunction(c.options.submitError)&&c.options.submitError(d,b,f.jqBootstrapValidation("collectErrors",!0))):(d.removeClass("error"),a.isFunction(c.options.submitSuccess)&&c.options.submitSuccess(d,b))}),this.each(function(){var b=a(this),e=b.parents(".form-group").first(),h=e.find(".help-block").first(),i=b.parents("form").first(),j=[];if(!h.length&&c.options.autoAdd&&c.options.autoAdd.helpBlocks&&(h=a('<div class="help-block" />'),e.find(".controls").append(h),d.push(h[0])),c.options.sniffHtml){var k="";if(void 0!==b.attr("pattern")&&(k="Not in the expected format<!-- data-validation-pattern-message to override -->",b.data("validationPatternMessage")&&(k=b.data("validationPatternMessage")),b.data("validationPatternMessage",k),b.data("validationPatternRegex",b.attr("pattern"))),void 0!==b.attr("max")||void 0!==b.attr("aria-valuemax")){var l=b.attr(void 0!==b.attr("max")?"max":"aria-valuemax");k="Too high: Maximum of '"+l+"'<!-- data-validation-max-message to override -->",b.data("validationMaxMessage")&&(k=b.data("validationMaxMessage")),b.data("validationMaxMessage",k),b.data("validationMaxMax",l)}if(void 0!==b.attr("min")||void 0!==b.attr("aria-valuemin")){var m=b.attr(void 0!==b.attr("min")?"min":"aria-valuemin");k="Too low: Minimum of '"+m+"'<!-- data-validation-min-message to override -->",b.data("validationMinMessage")&&(k=b.data("validationMinMessage")),b.data("validationMinMessage",k),b.data("validationMinMin",m)}void 0!==b.attr("maxlength")&&(k="Too long: Maximum of '"+b.attr("maxlength")+"' characters<!-- data-validation-maxlength-message to override -->",b.data("validationMaxlengthMessage")&&(k=b.data("validationMaxlengthMessage")),b.data("validationMaxlengthMessage",k),b.data("validationMaxlengthMaxlength",b.attr("maxlength"))),void 0!==b.attr("minlength")&&(k="Too short: Minimum of '"+b.attr("minlength")+"' characters<!-- data-validation-minlength-message to override -->",b.data("validationMinlengthMessage")&&(k=b.data("validationMinlengthMessage")),b.data("validationMinlengthMessage",k),b.data("validationMinlengthMinlength",b.attr("minlength"))),(void 0!==b.attr("required")||void 0!==b.attr("aria-required"))&&(k=c.builtInValidators.required.message,b.data("validationRequiredMessage")&&(k=b.data("validationRequiredMessage")),b.data("validationRequiredMessage",k)),void 0!==b.attr("type")&&"number"===b.attr("type").toLowerCase()&&(k=c.builtInValidators.number.message,b.data("validationNumberMessage")&&(k=b.data("validationNumberMessage")),b.data("validationNumberMessage",k)),void 0!==b.attr("type")&&"email"===b.attr("type").toLowerCase()&&(k="Not a valid email address<!-- data-validator-validemail-message to override -->",b.data("validationValidemailMessage")?k=b.data("validationValidemailMessage"):b.data("validationEmailMessage")&&(k=b.data("validationEmailMessage")),b.data("validationValidemailMessage",k)),void 0!==b.attr("minchecked")&&(k="Not enough options checked; Minimum of '"+b.attr("minchecked")+"' required<!-- data-validation-minchecked-message to override -->",b.data("validationMincheckedMessage")&&(k=b.data("validationMincheckedMessage")),b.data("validationMincheckedMessage",k),b.data("validationMincheckedMinchecked",b.attr("minchecked"))),void 0!==b.attr("maxchecked")&&(k="Too many options checked; Maximum of '"+b.attr("maxchecked")+"' required<!-- data-validation-maxchecked-message to override -->",b.data("validationMaxcheckedMessage")&&(k=b.data("validationMaxcheckedMessage")),b.data("validationMaxcheckedMessage",k),b.data("validationMaxcheckedMaxchecked",b.attr("maxchecked")))}void 0!==b.data("validation")&&(j=b.data("validation").split(",")),a.each(b.data(),function(a){var b=a.replace(/([A-Z])/g,",$1").split(",");"validation"===b[0]&&b[1]&&j.push(b[1])});var n=j,o=[];do a.each(j,function(a,b){j[a]=f(b)}),j=a.unique(j),o=[],a.each(n,function(d,e){if(void 0!==b.data("validation"+e+"Shortcut"))a.each(b.data("validation"+e+"Shortcut").split(","),function(a,b){o.push(b)});else if(c.builtInValidators[e.toLowerCase()]){var g=c.builtInValidators[e.toLowerCase()];"shortcut"===g.type.toLowerCase()&&a.each(g.shortcut.split(","),function(a,b){b=f(b),o.push(b),j.push(b)})}}),n=o;while(n.length>0);var p={};a.each(j,function(d,e){var g=b.data("validation"+e+"Message"),h=void 0!==g,i=!1;if(g=g?g:"'"+e+"' validation failed <!-- Add attribute 'data-validation-"+e.toLowerCase()+"-message' to input to change this message -->",a.each(c.validatorTypes,function(c,d){void 0===p[c]&&(p[c]=[]),i||void 0===b.data("validation"+e+f(d.name))||(p[c].push(a.extend(!0,{name:f(d.name),message:g},d.init(b,e))),i=!0)}),!i&&c.builtInValidators[e.toLowerCase()]){var j=a.extend(!0,{},c.builtInValidators[e.toLowerCase()]);h&&(j.message=g);var k=j.type.toLowerCase();"shortcut"===k?i=!0:a.each(c.validatorTypes,function(c,d){void 0===p[c]&&(p[c]=[]),i||k!==c.toLowerCase()||(b.data("validation"+e+f(d.name),j[d.name.toLowerCase()]),p[k].push(a.extend(j,d.init(b,e))),i=!0)})}i||a.error("Cannot find validation info for '"+e+"'")}),h.data("original-contents",h.data("original-contents")?h.data("original-contents"):h.html()),h.data("original-role",h.data("original-role")?h.data("original-role"):h.attr("role")),e.data("original-classes",e.data("original-clases")?e.data("original-classes"):e.attr("class")),b.data("original-aria-invalid",b.data("original-aria-invalid")?b.data("original-aria-invalid"):b.attr("aria-invalid")),b.bind("validation.validation",function(d,e){var f=g(b),h=[];return a.each(p,function(d,g){(f||f.length||e&&e.includeEmpty||c.validatorTypes[d].blockSubmit&&e&&e.submitting)&&a.each(g,function(a,e){c.validatorTypes[d].validate(b,f,e)&&h.push(e.message)})}),h}),b.bind("getValidators.validation",function(){return p}),b.bind("submit.validation",function(){return b.triggerHandler("change.validation",{submitting:!0})}),b.bind(["keyup","focus","blur","click","keydown","keypress","change"].join(".validation ")+".validation",function(d,f){var j=g(b),k=[];e.find("input,textarea,select").each(function(c,d){var e=k.length;if(a.each(a(d).triggerHandler("validation.validation",f),function(a,b){k.push(b)}),k.length>e)a(d).attr("aria-invalid","true");else{var g=b.data("original-aria-invalid");a(d).attr("aria-invalid",void 0!==g?g:!1)}}),i.find("input,select,textarea").not(b).not('[name="'+b.attr("name")+'"]').trigger("validationLostFocus.validation"),k=a.unique(k.sort()),k.length?(e.removeClass("success error").addClass("warning"),h.html(c.options.semanticallyStrict&&1===k.length?k[0]+(c.options.prependExistingHelpBlock?h.data("original-contents"):""):'<ul role="alert"><li>'+k.join("</li><li>")+"</li></ul>"+(c.options.prependExistingHelpBlock?h.data("original-contents"):""))):(e.removeClass("warning error success"),j.length>0&&e.addClass("success"),h.html(h.data("original-contents"))),"blur"===d.type&&e.removeClass("success")}),b.bind("validationLostFocus.validation",function(){e.removeClass("success")})})},destroy:function(){return this.each(function(){var b=a(this),c=b.parents(".form-group").first(),e=c.find(".help-block").first();b.unbind(".validation"),e.html(e.data("original-contents")),c.attr("class",c.data("original-classes")),b.attr("aria-invalid",b.data("original-aria-invalid")),e.attr("role",b.data("original-role")),d.indexOf(e[0])>-1&&e.remove()})},collectErrors:function(){var b={};return this.each(function(c,d){var e=a(d),f=e.attr("name"),g=e.triggerHandler("validation.validation",{includeEmpty:!0});b[f]=a.extend(!0,g,b[f])}),a.each(b,function(a,c){0===c.length&&delete b[a]}),b},hasErrors:function(){var b=[];return this.each(function(c,d){b=b.concat(a(d).triggerHandler("getValidators.validation")?a(d).triggerHandler("validation.validation",{submitting:!0}):[])}),b.length>0},override:function(b){e=a.extend(!0,e,b)}},validatorTypes:{callback:{name:"callback",init:function(a,b){return{validatorName:b,callback:a.data("validation"+b+"Callback"),lastValue:a.val(),lastValid:!0,lastFinished:!0}},validate:function(a,b,d){if(d.lastValue===b&&d.lastFinished)return!d.lastValid;if(d.lastFinished===!0){d.lastValue=b,d.lastValid=!0,d.lastFinished=!1;var e=d,f=a;c(d.callback,window,a,b,function(a){e.lastValue===a.value&&(e.lastValid=a.valid,a.message&&(e.message=a.message),e.lastFinished=!0,f.data("validation"+e.validatorName+"Message",e.message),setTimeout(function(){f.trigger("change.validation")},1))})}return!1}},ajax:{name:"ajax",init:function(a,b){return{validatorName:b,url:a.data("validation"+b+"Ajax"),lastValue:a.val(),lastValid:!0,lastFinished:!0}},validate:function(b,c,d){return""+d.lastValue==""+c&&d.lastFinished===!0?d.lastValid===!1:(d.lastFinished===!0&&(d.lastValue=c,d.lastValid=!0,d.lastFinished=!1,a.ajax({url:d.url,data:"value="+c+"&field="+b.attr("name"),dataType:"json",success:function(a){""+d.lastValue==""+a.value&&(d.lastValid=!!a.valid,a.message&&(d.message=a.message),d.lastFinished=!0,b.data("validation"+d.validatorName+"Message",d.message),setTimeout(function(){b.trigger("change.validation")},1))},failure:function(){d.lastValid=!0,d.message="ajax call failed",d.lastFinished=!0,b.data("validation"+d.validatorName+"Message",d.message),setTimeout(function(){b.trigger("change.validation")},1)}})),!1)}},regex:{name:"regex",init:function(a,c){return{regex:b(a.data("validation"+c+"Regex"))}},validate:function(a,b,c){return!c.regex.test(b)&&!c.negative||c.regex.test(b)&&c.negative}},required:{name:"required",init:function(){return{}},validate:function(a,b,c){return!(0!==b.length||c.negative)||!!(b.length>0&&c.negative)},blockSubmit:!0},match:{name:"match",init:function(a,b){var c=a.parents("form").first().find('[name="'+a.data("validation"+b+"Match")+'"]').first();return c.bind("validation.validation",function(){a.trigger("change.validation",{submitting:!0})}),{element:c}},validate:function(a,b,c){return b!==c.element.val()&&!c.negative||b===c.element.val()&&c.negative},blockSubmit:!0},max:{name:"max",init:function(a,b){return{max:a.data("validation"+b+"Max")}},validate:function(a,b,c){return parseFloat(b,10)>parseFloat(c.max,10)&&!c.negative||parseFloat(b,10)<=parseFloat(c.max,10)&&c.negative}},min:{name:"min",init:function(a,b){return{min:a.data("validation"+b+"Min")}},validate:function(a,b,c){return parseFloat(b)<parseFloat(c.min)&&!c.negative||parseFloat(b)>=parseFloat(c.min)&&c.negative}},maxlength:{name:"maxlength",init:function(a,b){return{maxlength:a.data("validation"+b+"Maxlength")}},validate:function(a,b,c){return b.length>c.maxlength&&!c.negative||b.length<=c.maxlength&&c.negative}},minlength:{name:"minlength",init:function(a,b){return{minlength:a.data("validation"+b+"Minlength")}},validate:function(a,b,c){return b.length<c.minlength&&!c.negative||b.length>=c.minlength&&c.negative}},maxchecked:{name:"maxchecked",init:function(a,b){var c=a.parents("form").first().find('[name="'+a.attr("name")+'"]');return c.bind("click.validation",function(){a.trigger("change.validation",{includeEmpty:!0})}),{maxchecked:a.data("validation"+b+"Maxchecked"),elements:c}},validate:function(a,b,c){return c.elements.filter(":checked").length>c.maxchecked&&!c.negative||c.elements.filter(":checked").length<=c.maxchecked&&c.negative},blockSubmit:!0},minchecked:{name:"minchecked",init:function(a,b){var c=a.parents("form").first().find('[name="'+a.attr("name")+'"]');return c.bind("click.validation",function(){a.trigger("change.validation",{includeEmpty:!0})}),{minchecked:a.data("validation"+b+"Minchecked"),elements:c}},validate:function(a,b,c){return c.elements.filter(":checked").length<c.minchecked&&!c.negative||c.elements.filter(":checked").length>=c.minchecked&&c.negative},blockSubmit:!0}},builtInValidators:{email:{name:"Email",type:"shortcut",shortcut:"validemail"},validemail:{name:"Validemail",type:"regex",regex:"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}",message:"Not a valid email address<!-- data-validator-validemail-message to override -->"},passwordagain:{name:"Passwordagain",type:"match",match:"password",message:"Does not match the given password<!-- data-validator-paswordagain-message to override -->"},positive:{name:"Positive",type:"shortcut",shortcut:"number,positivenumber"},negative:{name:"Negative",type:"shortcut",shortcut:"number,negativenumber"},number:{name:"Number",type:"regex",regex:"([+-]?\\d+(\\.\\d*)?([eE][+-]?[0-9]+)?)?",message:"Must be a number<!-- data-validator-number-message to override -->"},integer:{name:"Integer",type:"regex",regex:"[+-]?\\d+",message:"No decimal places allowed<!-- data-validator-integer-message to override -->"},positivenumber:{name:"Positivenumber",type:"min",min:0,message:"Must be a positive number<!-- data-validator-positivenumber-message to override -->"},negativenumber:{name:"Negativenumber",type:"max",max:0,message:"Must be a negative number<!-- data-validator-negativenumber-message to override -->"},required:{name:"Required",type:"required",message:"This is required<!-- data-validator-required-message to override -->"},checkone:{name:"Checkone",type:"minchecked",minchecked:1,message:"Check at least one option<!-- data-validation-checkone-message to override -->"}}},f=function(a){return a.toLowerCase().replace(/(^|\s)([a-z])/g,function(a,b,c){return b+c.toUpperCase()})},g=function(b){var c=b.val(),d=b.attr("type");return"checkbox"===d&&(c=b.is(":checked")?c:""),"radio"===d&&(c=a('input[name="'+b.attr("name")+'"]:checked').length>0?c:""),c};a.fn.jqBootstrapValidation=function(b){return e.methods[b]?e.methods[b].apply(this,Array.prototype.slice.call(arguments,1)):"object"!=typeof b&&b?(a.error("Method "+b+" does not exist on jQuery.jqBootstrapValidation"),null):e.methods.init.apply(this,arguments)},a.jqBootstrapValidation=function(){a(":input").not("[type=image],[type=submit]").jqBootstrapValidation.apply(this,arguments)}}(jQuery),$(function(){$("body").on("input propertychange",".floating-label-form-group",function(a){$(this).toggleClass("floating-label-form-group-with-value",!!$(a.target).val())}).on("focus",".floating-label-form-group",function(){$(this).addClass("floating-label-form-group-with-focus")}).on("blur",".floating-label-form-group",function(){$(this).removeClass("floating-label-form-group-with-focus")})}),jQuery(document).ready(function(a){var b=1170;if(a(window).width()>b){var c=a(".navbar-custom").height();a(window).on("scroll",{previousTop:0},function(){var b=a(window).scrollTop();b<this.previousTop?b>0&&a(".navbar-custom").hasClass("is-fixed")?a(".navbar-custom").addClass("is-visible"):a(".navbar-custom").removeClass("is-visible is-fixed"):(a(".navbar-custom").removeClass("is-visible"),b>c&&!a(".navbar-custom").hasClass("is-fixed")&&a(".navbar-custom").addClass("is-fixed")),this.previousTop=b})}});
+(function() {
+
+
+}).call(this);
 /* ========================================================================
  * Bootstrap: affix.js v3.3.5
  * http://getbootstrap.com/javascript/#affix
@@ -12708,1300 +15080,6 @@ return jQuery;
 
 
 
-(function($, undefined) {
-
-/**
- * Unobtrusive scripting adapter for jQuery
- * https://github.com/rails/jquery-ujs
- *
- * Requires jQuery 1.8.0 or later.
- *
- * Released under the MIT license
- *
- */
-
-  // Cut down on the number of issues from people inadvertently including jquery_ujs twice
-  // by detecting and raising an error when it happens.
-  'use strict';
-
-  if ( $.rails !== undefined ) {
-    $.error('jquery-ujs has already been loaded!');
-  }
-
-  // Shorthand to make it a little easier to call public rails functions from within rails.js
-  var rails;
-  var $document = $(document);
-
-  $.rails = rails = {
-    // Link elements bound by jquery-ujs
-    linkClickSelector: 'a[data-confirm], a[data-method], a[data-remote], a[data-disable-with], a[data-disable]',
-
-    // Button elements bound by jquery-ujs
-    buttonClickSelector: 'button[data-remote]:not(form button), button[data-confirm]:not(form button)',
-
-    // Select elements bound by jquery-ujs
-    inputChangeSelector: 'select[data-remote], input[data-remote], textarea[data-remote]',
-
-    // Form elements bound by jquery-ujs
-    formSubmitSelector: 'form',
-
-    // Form input elements bound by jquery-ujs
-    formInputClickSelector: 'form input[type=submit], form input[type=image], form button[type=submit], form button:not([type]), input[type=submit][form], input[type=image][form], button[type=submit][form], button[form]:not([type])',
-
-    // Form input elements disabled during form submission
-    disableSelector: 'input[data-disable-with]:enabled, button[data-disable-with]:enabled, textarea[data-disable-with]:enabled, input[data-disable]:enabled, button[data-disable]:enabled, textarea[data-disable]:enabled',
-
-    // Form input elements re-enabled after form submission
-    enableSelector: 'input[data-disable-with]:disabled, button[data-disable-with]:disabled, textarea[data-disable-with]:disabled, input[data-disable]:disabled, button[data-disable]:disabled, textarea[data-disable]:disabled',
-
-    // Form required input elements
-    requiredInputSelector: 'input[name][required]:not([disabled]),textarea[name][required]:not([disabled])',
-
-    // Form file input elements
-    fileInputSelector: 'input[type=file]:not([disabled])',
-
-    // Link onClick disable selector with possible reenable after remote submission
-    linkDisableSelector: 'a[data-disable-with], a[data-disable]',
-
-    // Button onClick disable selector with possible reenable after remote submission
-    buttonDisableSelector: 'button[data-remote][data-disable-with], button[data-remote][data-disable]',
-
-    // Up-to-date Cross-Site Request Forgery token
-    csrfToken: function() {
-     return $('meta[name=csrf-token]').attr('content');
-    },
-
-    // URL param that must contain the CSRF token
-    csrfParam: function() {
-     return $('meta[name=csrf-param]').attr('content');
-    },
-
-    // Make sure that every Ajax request sends the CSRF token
-    CSRFProtection: function(xhr) {
-      var token = rails.csrfToken();
-      if (token) xhr.setRequestHeader('X-CSRF-Token', token);
-    },
-
-    // making sure that all forms have actual up-to-date token(cached forms contain old one)
-    refreshCSRFTokens: function(){
-      $('form input[name="' + rails.csrfParam() + '"]').val(rails.csrfToken());
-    },
-
-    // Triggers an event on an element and returns false if the event result is false
-    fire: function(obj, name, data) {
-      var event = $.Event(name);
-      obj.trigger(event, data);
-      return event.result !== false;
-    },
-
-    // Default confirm dialog, may be overridden with custom confirm dialog in $.rails.confirm
-    confirm: function(message) {
-      return confirm(message);
-    },
-
-    // Default ajax function, may be overridden with custom function in $.rails.ajax
-    ajax: function(options) {
-      return $.ajax(options);
-    },
-
-    // Default way to get an element's href. May be overridden at $.rails.href.
-    href: function(element) {
-      return element[0].href;
-    },
-
-    // Checks "data-remote" if true to handle the request through a XHR request.
-    isRemote: function(element) {
-      return element.data('remote') !== undefined && element.data('remote') !== false;
-    },
-
-    // Submits "remote" forms and links with ajax
-    handleRemote: function(element) {
-      var method, url, data, withCredentials, dataType, options;
-
-      if (rails.fire(element, 'ajax:before')) {
-        withCredentials = element.data('with-credentials') || null;
-        dataType = element.data('type') || ($.ajaxSettings && $.ajaxSettings.dataType);
-
-        if (element.is('form')) {
-          method = element.attr('method');
-          url = element.attr('action');
-          data = element.serializeArray();
-          // memoized value from clicked submit button
-          var button = element.data('ujs:submit-button');
-          if (button) {
-            data.push(button);
-            element.data('ujs:submit-button', null);
-          }
-        } else if (element.is(rails.inputChangeSelector)) {
-          method = element.data('method');
-          url = element.data('url');
-          data = element.serialize();
-          if (element.data('params')) data = data + '&' + element.data('params');
-        } else if (element.is(rails.buttonClickSelector)) {
-          method = element.data('method') || 'get';
-          url = element.data('url');
-          data = element.serialize();
-          if (element.data('params')) data = data + '&' + element.data('params');
-        } else {
-          method = element.data('method');
-          url = rails.href(element);
-          data = element.data('params') || null;
-        }
-
-        options = {
-          type: method || 'GET', data: data, dataType: dataType,
-          // stopping the "ajax:beforeSend" event will cancel the ajax request
-          beforeSend: function(xhr, settings) {
-            if (settings.dataType === undefined) {
-              xhr.setRequestHeader('accept', '*/*;q=0.5, ' + settings.accepts.script);
-            }
-            if (rails.fire(element, 'ajax:beforeSend', [xhr, settings])) {
-              element.trigger('ajax:send', xhr);
-            } else {
-              return false;
-            }
-          },
-          success: function(data, status, xhr) {
-            element.trigger('ajax:success', [data, status, xhr]);
-          },
-          complete: function(xhr, status) {
-            element.trigger('ajax:complete', [xhr, status]);
-          },
-          error: function(xhr, status, error) {
-            element.trigger('ajax:error', [xhr, status, error]);
-          },
-          crossDomain: rails.isCrossDomain(url)
-        };
-
-        // There is no withCredentials for IE6-8 when
-        // "Enable native XMLHTTP support" is disabled
-        if (withCredentials) {
-          options.xhrFields = {
-            withCredentials: withCredentials
-          };
-        }
-
-        // Only pass url to `ajax` options if not blank
-        if (url) { options.url = url; }
-
-        return rails.ajax(options);
-      } else {
-        return false;
-      }
-    },
-
-    // Determines if the request is a cross domain request.
-    isCrossDomain: function(url) {
-      var originAnchor = document.createElement('a');
-      originAnchor.href = location.href;
-      var urlAnchor = document.createElement('a');
-
-      try {
-        urlAnchor.href = url;
-        // This is a workaround to a IE bug.
-        urlAnchor.href = urlAnchor.href;
-
-        // If URL protocol is false or is a string containing a single colon
-        // *and* host are false, assume it is not a cross-domain request
-        // (should only be the case for IE7 and IE compatibility mode).
-        // Otherwise, evaluate protocol and host of the URL against the origin
-        // protocol and host.
-        return !(((!urlAnchor.protocol || urlAnchor.protocol === ':') && !urlAnchor.host) ||
-          (originAnchor.protocol + '//' + originAnchor.host ===
-            urlAnchor.protocol + '//' + urlAnchor.host));
-      } catch (e) {
-        // If there is an error parsing the URL, assume it is crossDomain.
-        return true;
-      }
-    },
-
-    // Handles "data-method" on links such as:
-    // <a href="/users/5" data-method="delete" rel="nofollow" data-confirm="Are you sure?">Delete</a>
-    handleMethod: function(link) {
-      var href = rails.href(link),
-        method = link.data('method'),
-        target = link.attr('target'),
-        csrfToken = rails.csrfToken(),
-        csrfParam = rails.csrfParam(),
-        form = $('<form method="post" action="' + href + '"></form>'),
-        metadataInput = '<input name="_method" value="' + method + '" type="hidden" />';
-
-      if (csrfParam !== undefined && csrfToken !== undefined && !rails.isCrossDomain(href)) {
-        metadataInput += '<input name="' + csrfParam + '" value="' + csrfToken + '" type="hidden" />';
-      }
-
-      if (target) { form.attr('target', target); }
-
-      form.hide().append(metadataInput).appendTo('body');
-      form.submit();
-    },
-
-    // Helper function that returns form elements that match the specified CSS selector
-    // If form is actually a "form" element this will return associated elements outside the from that have
-    // the html form attribute set
-    formElements: function(form, selector) {
-      return form.is('form') ? $(form[0].elements).filter(selector) : form.find(selector);
-    },
-
-    /* Disables form elements:
-      - Caches element value in 'ujs:enable-with' data store
-      - Replaces element text with value of 'data-disable-with' attribute
-      - Sets disabled property to true
-    */
-    disableFormElements: function(form) {
-      rails.formElements(form, rails.disableSelector).each(function() {
-        rails.disableFormElement($(this));
-      });
-    },
-
-    disableFormElement: function(element) {
-      var method, replacement;
-
-      method = element.is('button') ? 'html' : 'val';
-      replacement = element.data('disable-with');
-
-      element.data('ujs:enable-with', element[method]());
-      if (replacement !== undefined) {
-        element[method](replacement);
-      }
-
-      element.prop('disabled', true);
-    },
-
-    /* Re-enables disabled form elements:
-      - Replaces element text with cached value from 'ujs:enable-with' data store (created in `disableFormElements`)
-      - Sets disabled property to false
-    */
-    enableFormElements: function(form) {
-      rails.formElements(form, rails.enableSelector).each(function() {
-        rails.enableFormElement($(this));
-      });
-    },
-
-    enableFormElement: function(element) {
-      var method = element.is('button') ? 'html' : 'val';
-      if (typeof element.data('ujs:enable-with') !== 'undefined') element[method](element.data('ujs:enable-with'));
-      element.prop('disabled', false);
-    },
-
-   /* For 'data-confirm' attribute:
-      - Fires `confirm` event
-      - Shows the confirmation dialog
-      - Fires the `confirm:complete` event
-
-      Returns `true` if no function stops the chain and user chose yes; `false` otherwise.
-      Attaching a handler to the element's `confirm` event that returns a `falsy` value cancels the confirmation dialog.
-      Attaching a handler to the element's `confirm:complete` event that returns a `falsy` value makes this function
-      return false. The `confirm:complete` event is fired whether or not the user answered true or false to the dialog.
-   */
-    allowAction: function(element) {
-      var message = element.data('confirm'),
-          answer = false, callback;
-      if (!message) { return true; }
-
-      if (rails.fire(element, 'confirm')) {
-        try {
-          answer = rails.confirm(message);
-        } catch (e) {
-          (console.error || console.log).call(console, e.stack || e);
-        }
-        callback = rails.fire(element, 'confirm:complete', [answer]);
-      }
-      return answer && callback;
-    },
-
-    // Helper function which checks for blank inputs in a form that match the specified CSS selector
-    blankInputs: function(form, specifiedSelector, nonBlank) {
-      var inputs = $(), input, valueToCheck,
-          selector = specifiedSelector || 'input,textarea',
-          allInputs = form.find(selector);
-
-      allInputs.each(function() {
-        input = $(this);
-        valueToCheck = input.is('input[type=checkbox],input[type=radio]') ? input.is(':checked') : !!input.val();
-        if (valueToCheck === nonBlank) {
-
-          // Don't count unchecked required radio if other radio with same name is checked
-          if (input.is('input[type=radio]') && allInputs.filter('input[type=radio]:checked[name="' + input.attr('name') + '"]').length) {
-            return true; // Skip to next input
-          }
-
-          inputs = inputs.add(input);
-        }
-      });
-      return inputs.length ? inputs : false;
-    },
-
-    // Helper function which checks for non-blank inputs in a form that match the specified CSS selector
-    nonBlankInputs: function(form, specifiedSelector) {
-      return rails.blankInputs(form, specifiedSelector, true); // true specifies nonBlank
-    },
-
-    // Helper function, needed to provide consistent behavior in IE
-    stopEverything: function(e) {
-      $(e.target).trigger('ujs:everythingStopped');
-      e.stopImmediatePropagation();
-      return false;
-    },
-
-    //  replace element's html with the 'data-disable-with' after storing original html
-    //  and prevent clicking on it
-    disableElement: function(element) {
-      var replacement = element.data('disable-with');
-
-      element.data('ujs:enable-with', element.html()); // store enabled state
-      if (replacement !== undefined) {
-        element.html(replacement);
-      }
-
-      element.bind('click.railsDisable', function(e) { // prevent further clicking
-        return rails.stopEverything(e);
-      });
-    },
-
-    // restore element to its original state which was disabled by 'disableElement' above
-    enableElement: function(element) {
-      if (element.data('ujs:enable-with') !== undefined) {
-        element.html(element.data('ujs:enable-with')); // set to old enabled state
-        element.removeData('ujs:enable-with'); // clean up cache
-      }
-      element.unbind('click.railsDisable'); // enable element
-    }
-  };
-
-  if (rails.fire($document, 'rails:attachBindings')) {
-
-    $.ajaxPrefilter(function(options, originalOptions, xhr){ if ( !options.crossDomain ) { rails.CSRFProtection(xhr); }});
-
-    // This event works the same as the load event, except that it fires every
-    // time the page is loaded.
-    //
-    // See https://github.com/rails/jquery-ujs/issues/357
-    // See https://developer.mozilla.org/en-US/docs/Using_Firefox_1.5_caching
-    $(window).on('pageshow.rails', function () {
-      $($.rails.enableSelector).each(function () {
-        var element = $(this);
-
-        if (element.data('ujs:enable-with')) {
-          $.rails.enableFormElement(element);
-        }
-      });
-
-      $($.rails.linkDisableSelector).each(function () {
-        var element = $(this);
-
-        if (element.data('ujs:enable-with')) {
-          $.rails.enableElement(element);
-        }
-      });
-    });
-
-    $document.delegate(rails.linkDisableSelector, 'ajax:complete', function() {
-        rails.enableElement($(this));
-    });
-
-    $document.delegate(rails.buttonDisableSelector, 'ajax:complete', function() {
-        rails.enableFormElement($(this));
-    });
-
-    $document.delegate(rails.linkClickSelector, 'click.rails', function(e) {
-      var link = $(this), method = link.data('method'), data = link.data('params'), metaClick = e.metaKey || e.ctrlKey;
-      if (!rails.allowAction(link)) return rails.stopEverything(e);
-
-      if (!metaClick && link.is(rails.linkDisableSelector)) rails.disableElement(link);
-
-      if (rails.isRemote(link)) {
-        if (metaClick && (!method || method === 'GET') && !data) { return true; }
-
-        var handleRemote = rails.handleRemote(link);
-        // response from rails.handleRemote() will either be false or a deferred object promise.
-        if (handleRemote === false) {
-          rails.enableElement(link);
-        } else {
-          handleRemote.fail( function() { rails.enableElement(link); } );
-        }
-        return false;
-
-      } else if (method) {
-        rails.handleMethod(link);
-        return false;
-      }
-    });
-
-    $document.delegate(rails.buttonClickSelector, 'click.rails', function(e) {
-      var button = $(this);
-
-      if (!rails.allowAction(button) || !rails.isRemote(button)) return rails.stopEverything(e);
-
-      if (button.is(rails.buttonDisableSelector)) rails.disableFormElement(button);
-
-      var handleRemote = rails.handleRemote(button);
-      // response from rails.handleRemote() will either be false or a deferred object promise.
-      if (handleRemote === false) {
-        rails.enableFormElement(button);
-      } else {
-        handleRemote.fail( function() { rails.enableFormElement(button); } );
-      }
-      return false;
-    });
-
-    $document.delegate(rails.inputChangeSelector, 'change.rails', function(e) {
-      var link = $(this);
-      if (!rails.allowAction(link) || !rails.isRemote(link)) return rails.stopEverything(e);
-
-      rails.handleRemote(link);
-      return false;
-    });
-
-    $document.delegate(rails.formSubmitSelector, 'submit.rails', function(e) {
-      var form = $(this),
-        remote = rails.isRemote(form),
-        blankRequiredInputs,
-        nonBlankFileInputs;
-
-      if (!rails.allowAction(form)) return rails.stopEverything(e);
-
-      // skip other logic when required values are missing or file upload is present
-      if (form.attr('novalidate') === undefined) {
-        blankRequiredInputs = rails.blankInputs(form, rails.requiredInputSelector, false);
-        if (blankRequiredInputs && rails.fire(form, 'ajax:aborted:required', [blankRequiredInputs])) {
-          return rails.stopEverything(e);
-        }
-      }
-
-      if (remote) {
-        nonBlankFileInputs = rails.nonBlankInputs(form, rails.fileInputSelector);
-        if (nonBlankFileInputs) {
-          // slight timeout so that the submit button gets properly serialized
-          // (make it easy for event handler to serialize form without disabled values)
-          setTimeout(function(){ rails.disableFormElements(form); }, 13);
-          var aborted = rails.fire(form, 'ajax:aborted:file', [nonBlankFileInputs]);
-
-          // re-enable form elements if event bindings return false (canceling normal form submission)
-          if (!aborted) { setTimeout(function(){ rails.enableFormElements(form); }, 13); }
-
-          return aborted;
-        }
-
-        rails.handleRemote(form);
-        return false;
-
-      } else {
-        // slight timeout so that the submit button gets properly serialized
-        setTimeout(function(){ rails.disableFormElements(form); }, 13);
-      }
-    });
-
-    $document.delegate(rails.formInputClickSelector, 'click.rails', function(event) {
-      var button = $(this);
-
-      if (!rails.allowAction(button)) return rails.stopEverything(event);
-
-      // register the pressed submit button
-      var name = button.attr('name'),
-        data = name ? {name:name, value:button.val()} : null;
-
-      button.closest('form').data('ujs:submit-button', data);
-    });
-
-    $document.delegate(rails.formSubmitSelector, 'ajax:send.rails', function(event) {
-      if (this === event.target) rails.disableFormElements($(this));
-    });
-
-    $document.delegate(rails.formSubmitSelector, 'ajax:complete.rails', function(event) {
-      if (this === event.target) rails.enableFormElements($(this));
-    });
-
-    $(function(){
-      rails.refreshCSRFTokens();
-    });
-  }
-
-})( jQuery );
-(function() {
-  var CSRFToken, Click, ComponentUrl, EVENTS, Link, ProgressBar, browserIsntBuggy, browserSupportsCustomEvents, browserSupportsPushState, browserSupportsTurbolinks, bypassOnLoadPopstate, cacheCurrentPage, cacheSize, changePage, clone, constrainPageCacheTo, createDocument, crossOriginRedirect, currentState, enableProgressBar, enableTransitionCache, executeScriptTags, extractTitleAndBody, fetch, fetchHistory, fetchReplacement, historyStateIsDefined, initializeTurbolinks, installDocumentReadyPageEventTriggers, installHistoryChangeHandler, installJqueryAjaxSuccessPageUpdateTrigger, loadedAssets, manuallyTriggerHashChangeForFirefox, pageCache, pageChangePrevented, pagesCached, popCookie, processResponse, progressBar, recallScrollPosition, ref, referer, reflectNewUrl, reflectRedirectedUrl, rememberCurrentState, rememberCurrentUrl, rememberReferer, removeNoscriptTags, requestMethodIsSafe, resetScrollPosition, setAutofocusElement, transitionCacheEnabled, transitionCacheFor, triggerEvent, visit, xhr,
-    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
-    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-    hasProp = {}.hasOwnProperty,
-    slice = [].slice,
-    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-
-  pageCache = {};
-
-  cacheSize = 10;
-
-  transitionCacheEnabled = false;
-
-  progressBar = null;
-
-  currentState = null;
-
-  loadedAssets = null;
-
-  referer = null;
-
-  xhr = null;
-
-  EVENTS = {
-    BEFORE_CHANGE: 'page:before-change',
-    FETCH: 'page:fetch',
-    RECEIVE: 'page:receive',
-    CHANGE: 'page:change',
-    UPDATE: 'page:update',
-    LOAD: 'page:load',
-    RESTORE: 'page:restore',
-    BEFORE_UNLOAD: 'page:before-unload',
-    EXPIRE: 'page:expire'
-  };
-
-  fetch = function(url) {
-    var cachedPage;
-    url = new ComponentUrl(url);
-    rememberReferer();
-    cacheCurrentPage();
-    if (progressBar != null) {
-      progressBar.start();
-    }
-    if (transitionCacheEnabled && (cachedPage = transitionCacheFor(url.absolute))) {
-      fetchHistory(cachedPage);
-      return fetchReplacement(url, null, false);
-    } else {
-      return fetchReplacement(url, resetScrollPosition);
-    }
-  };
-
-  transitionCacheFor = function(url) {
-    var cachedPage;
-    cachedPage = pageCache[url];
-    if (cachedPage && !cachedPage.transitionCacheDisabled) {
-      return cachedPage;
-    }
-  };
-
-  enableTransitionCache = function(enable) {
-    if (enable == null) {
-      enable = true;
-    }
-    return transitionCacheEnabled = enable;
-  };
-
-  enableProgressBar = function(enable) {
-    if (enable == null) {
-      enable = true;
-    }
-    if (!browserSupportsTurbolinks) {
-      return;
-    }
-    if (enable) {
-      return progressBar != null ? progressBar : progressBar = new ProgressBar('html');
-    } else {
-      if (progressBar != null) {
-        progressBar.uninstall();
-      }
-      return progressBar = null;
-    }
-  };
-
-  fetchReplacement = function(url, onLoadFunction, showProgressBar) {
-    if (showProgressBar == null) {
-      showProgressBar = true;
-    }
-    triggerEvent(EVENTS.FETCH, {
-      url: url.absolute
-    });
-    if (xhr != null) {
-      xhr.abort();
-    }
-    xhr = new XMLHttpRequest;
-    xhr.open('GET', url.withoutHashForIE10compatibility(), true);
-    xhr.setRequestHeader('Accept', 'text/html, application/xhtml+xml, application/xml');
-    xhr.setRequestHeader('X-XHR-Referer', referer);
-    xhr.onload = function() {
-      var doc;
-      triggerEvent(EVENTS.RECEIVE, {
-        url: url.absolute
-      });
-      if (doc = processResponse()) {
-        reflectNewUrl(url);
-        reflectRedirectedUrl();
-        changePage.apply(null, extractTitleAndBody(doc));
-        manuallyTriggerHashChangeForFirefox();
-        if (typeof onLoadFunction === "function") {
-          onLoadFunction();
-        }
-        return triggerEvent(EVENTS.LOAD);
-      } else {
-        return document.location.href = crossOriginRedirect() || url.absolute;
-      }
-    };
-    if (progressBar && showProgressBar) {
-      xhr.onprogress = (function(_this) {
-        return function(event) {
-          var percent;
-          percent = event.lengthComputable ? event.loaded / event.total * 100 : progressBar.value + (100 - progressBar.value) / 10;
-          return progressBar.advanceTo(percent);
-        };
-      })(this);
-    }
-    xhr.onloadend = function() {
-      return xhr = null;
-    };
-    xhr.onerror = function() {
-      return document.location.href = url.absolute;
-    };
-    return xhr.send();
-  };
-
-  fetchHistory = function(cachedPage) {
-    if (xhr != null) {
-      xhr.abort();
-    }
-    changePage(cachedPage.title, cachedPage.body);
-    recallScrollPosition(cachedPage);
-    return triggerEvent(EVENTS.RESTORE);
-  };
-
-  cacheCurrentPage = function() {
-    var currentStateUrl;
-    currentStateUrl = new ComponentUrl(currentState.url);
-    pageCache[currentStateUrl.absolute] = {
-      url: currentStateUrl.relative,
-      body: document.body,
-      title: document.title,
-      positionY: window.pageYOffset,
-      positionX: window.pageXOffset,
-      cachedAt: new Date().getTime(),
-      transitionCacheDisabled: document.querySelector('[data-no-transition-cache]') != null
-    };
-    return constrainPageCacheTo(cacheSize);
-  };
-
-  pagesCached = function(size) {
-    if (size == null) {
-      size = cacheSize;
-    }
-    if (/^[\d]+$/.test(size)) {
-      return cacheSize = parseInt(size);
-    }
-  };
-
-  constrainPageCacheTo = function(limit) {
-    var cacheTimesRecentFirst, i, key, len, pageCacheKeys, results;
-    pageCacheKeys = Object.keys(pageCache);
-    cacheTimesRecentFirst = pageCacheKeys.map(function(url) {
-      return pageCache[url].cachedAt;
-    }).sort(function(a, b) {
-      return b - a;
-    });
-    results = [];
-    for (i = 0, len = pageCacheKeys.length; i < len; i++) {
-      key = pageCacheKeys[i];
-      if (!(pageCache[key].cachedAt <= cacheTimesRecentFirst[limit])) {
-        continue;
-      }
-      triggerEvent(EVENTS.EXPIRE, pageCache[key]);
-      results.push(delete pageCache[key]);
-    }
-    return results;
-  };
-
-  changePage = function(title, body, csrfToken, runScripts) {
-    triggerEvent(EVENTS.BEFORE_UNLOAD);
-    document.title = title;
-    document.documentElement.replaceChild(body, document.body);
-    if (csrfToken != null) {
-      CSRFToken.update(csrfToken);
-    }
-    setAutofocusElement();
-    if (runScripts) {
-      executeScriptTags();
-    }
-    currentState = window.history.state;
-    if (progressBar != null) {
-      progressBar.done();
-    }
-    triggerEvent(EVENTS.CHANGE);
-    return triggerEvent(EVENTS.UPDATE);
-  };
-
-  executeScriptTags = function() {
-    var attr, copy, i, j, len, len1, nextSibling, parentNode, ref, ref1, script, scripts;
-    scripts = Array.prototype.slice.call(document.body.querySelectorAll('script:not([data-turbolinks-eval="false"])'));
-    for (i = 0, len = scripts.length; i < len; i++) {
-      script = scripts[i];
-      if (!((ref = script.type) === '' || ref === 'text/javascript')) {
-        continue;
-      }
-      copy = document.createElement('script');
-      ref1 = script.attributes;
-      for (j = 0, len1 = ref1.length; j < len1; j++) {
-        attr = ref1[j];
-        copy.setAttribute(attr.name, attr.value);
-      }
-      if (!script.hasAttribute('async')) {
-        copy.async = false;
-      }
-      copy.appendChild(document.createTextNode(script.innerHTML));
-      parentNode = script.parentNode, nextSibling = script.nextSibling;
-      parentNode.removeChild(script);
-      parentNode.insertBefore(copy, nextSibling);
-    }
-  };
-
-  removeNoscriptTags = function(node) {
-    node.innerHTML = node.innerHTML.replace(/<noscript[\S\s]*?<\/noscript>/ig, '');
-    return node;
-  };
-
-  setAutofocusElement = function() {
-    var autofocusElement, list;
-    autofocusElement = (list = document.querySelectorAll('input[autofocus], textarea[autofocus]'))[list.length - 1];
-    if (autofocusElement && document.activeElement !== autofocusElement) {
-      return autofocusElement.focus();
-    }
-  };
-
-  reflectNewUrl = function(url) {
-    if ((url = new ComponentUrl(url)).absolute !== referer) {
-      return window.history.pushState({
-        turbolinks: true,
-        url: url.absolute
-      }, '', url.absolute);
-    }
-  };
-
-  reflectRedirectedUrl = function() {
-    var location, preservedHash;
-    if (location = xhr.getResponseHeader('X-XHR-Redirected-To')) {
-      location = new ComponentUrl(location);
-      preservedHash = location.hasNoHash() ? document.location.hash : '';
-      return window.history.replaceState(window.history.state, '', location.href + preservedHash);
-    }
-  };
-
-  crossOriginRedirect = function() {
-    var redirect;
-    if (((redirect = xhr.getResponseHeader('Location')) != null) && (new ComponentUrl(redirect)).crossOrigin()) {
-      return redirect;
-    }
-  };
-
-  rememberReferer = function() {
-    return referer = document.location.href;
-  };
-
-  rememberCurrentUrl = function() {
-    return window.history.replaceState({
-      turbolinks: true,
-      url: document.location.href
-    }, '', document.location.href);
-  };
-
-  rememberCurrentState = function() {
-    return currentState = window.history.state;
-  };
-
-  manuallyTriggerHashChangeForFirefox = function() {
-    var url;
-    if (navigator.userAgent.match(/Firefox/) && !(url = new ComponentUrl).hasNoHash()) {
-      window.history.replaceState(currentState, '', url.withoutHash());
-      return document.location.hash = url.hash;
-    }
-  };
-
-  recallScrollPosition = function(page) {
-    return window.scrollTo(page.positionX, page.positionY);
-  };
-
-  resetScrollPosition = function() {
-    if (document.location.hash) {
-      return document.location.href = document.location.href;
-    } else {
-      return window.scrollTo(0, 0);
-    }
-  };
-
-  clone = function(original) {
-    var copy, key, value;
-    if ((original == null) || typeof original !== 'object') {
-      return original;
-    }
-    copy = new original.constructor();
-    for (key in original) {
-      value = original[key];
-      copy[key] = clone(value);
-    }
-    return copy;
-  };
-
-  popCookie = function(name) {
-    var ref, value;
-    value = ((ref = document.cookie.match(new RegExp(name + "=(\\w+)"))) != null ? ref[1].toUpperCase() : void 0) || '';
-    document.cookie = name + '=; expires=Thu, 01-Jan-70 00:00:01 GMT; path=/';
-    return value;
-  };
-
-  triggerEvent = function(name, data) {
-    var event;
-    if (typeof Prototype !== 'undefined') {
-      Event.fire(document, name, data, true);
-    }
-    event = document.createEvent('Events');
-    if (data) {
-      event.data = data;
-    }
-    event.initEvent(name, true, true);
-    return document.dispatchEvent(event);
-  };
-
-  pageChangePrevented = function(url) {
-    return !triggerEvent(EVENTS.BEFORE_CHANGE, {
-      url: url
-    });
-  };
-
-  processResponse = function() {
-    var assetsChanged, clientOrServerError, doc, extractTrackAssets, intersection, validContent;
-    clientOrServerError = function() {
-      var ref;
-      return (400 <= (ref = xhr.status) && ref < 600);
-    };
-    validContent = function() {
-      var contentType;
-      return ((contentType = xhr.getResponseHeader('Content-Type')) != null) && contentType.match(/^(?:text\/html|application\/xhtml\+xml|application\/xml)(?:;|$)/);
-    };
-    extractTrackAssets = function(doc) {
-      var i, len, node, ref, results;
-      ref = doc.querySelector('head').childNodes;
-      results = [];
-      for (i = 0, len = ref.length; i < len; i++) {
-        node = ref[i];
-        if ((typeof node.getAttribute === "function" ? node.getAttribute('data-turbolinks-track') : void 0) != null) {
-          results.push(node.getAttribute('src') || node.getAttribute('href'));
-        }
-      }
-      return results;
-    };
-    assetsChanged = function(doc) {
-      var fetchedAssets;
-      loadedAssets || (loadedAssets = extractTrackAssets(document));
-      fetchedAssets = extractTrackAssets(doc);
-      return fetchedAssets.length !== loadedAssets.length || intersection(fetchedAssets, loadedAssets).length !== loadedAssets.length;
-    };
-    intersection = function(a, b) {
-      var i, len, ref, results, value;
-      if (a.length > b.length) {
-        ref = [b, a], a = ref[0], b = ref[1];
-      }
-      results = [];
-      for (i = 0, len = a.length; i < len; i++) {
-        value = a[i];
-        if (indexOf.call(b, value) >= 0) {
-          results.push(value);
-        }
-      }
-      return results;
-    };
-    if (!clientOrServerError() && validContent()) {
-      doc = createDocument(xhr.responseText);
-      if (doc && !assetsChanged(doc)) {
-        return doc;
-      }
-    }
-  };
-
-  extractTitleAndBody = function(doc) {
-    var title;
-    title = doc.querySelector('title');
-    return [title != null ? title.textContent : void 0, removeNoscriptTags(doc.querySelector('body')), CSRFToken.get(doc).token, 'runScripts'];
-  };
-
-  CSRFToken = {
-    get: function(doc) {
-      var tag;
-      if (doc == null) {
-        doc = document;
-      }
-      return {
-        node: tag = doc.querySelector('meta[name="csrf-token"]'),
-        token: tag != null ? typeof tag.getAttribute === "function" ? tag.getAttribute('content') : void 0 : void 0
-      };
-    },
-    update: function(latest) {
-      var current;
-      current = this.get();
-      if ((current.token != null) && (latest != null) && current.token !== latest) {
-        return current.node.setAttribute('content', latest);
-      }
-    }
-  };
-
-  createDocument = function(html) {
-    var doc;
-    doc = document.documentElement.cloneNode();
-    doc.innerHTML = html;
-    doc.head = doc.querySelector('head');
-    doc.body = doc.querySelector('body');
-    return doc;
-  };
-
-  ComponentUrl = (function() {
-    function ComponentUrl(original1) {
-      this.original = original1 != null ? original1 : document.location.href;
-      if (this.original.constructor === ComponentUrl) {
-        return this.original;
-      }
-      this._parse();
-    }
-
-    ComponentUrl.prototype.withoutHash = function() {
-      return this.href.replace(this.hash, '').replace('#', '');
-    };
-
-    ComponentUrl.prototype.withoutHashForIE10compatibility = function() {
-      return this.withoutHash();
-    };
-
-    ComponentUrl.prototype.hasNoHash = function() {
-      return this.hash.length === 0;
-    };
-
-    ComponentUrl.prototype.crossOrigin = function() {
-      return this.origin !== (new ComponentUrl).origin;
-    };
-
-    ComponentUrl.prototype._parse = function() {
-      var ref;
-      (this.link != null ? this.link : this.link = document.createElement('a')).href = this.original;
-      ref = this.link, this.href = ref.href, this.protocol = ref.protocol, this.host = ref.host, this.hostname = ref.hostname, this.port = ref.port, this.pathname = ref.pathname, this.search = ref.search, this.hash = ref.hash;
-      this.origin = [this.protocol, '//', this.hostname].join('');
-      if (this.port.length !== 0) {
-        this.origin += ":" + this.port;
-      }
-      this.relative = [this.pathname, this.search, this.hash].join('');
-      return this.absolute = this.href;
-    };
-
-    return ComponentUrl;
-
-  })();
-
-  Link = (function(superClass) {
-    extend(Link, superClass);
-
-    Link.HTML_EXTENSIONS = ['html'];
-
-    Link.allowExtensions = function() {
-      var extension, extensions, i, len;
-      extensions = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-      for (i = 0, len = extensions.length; i < len; i++) {
-        extension = extensions[i];
-        Link.HTML_EXTENSIONS.push(extension);
-      }
-      return Link.HTML_EXTENSIONS;
-    };
-
-    function Link(link1) {
-      this.link = link1;
-      if (this.link.constructor === Link) {
-        return this.link;
-      }
-      this.original = this.link.href;
-      this.originalElement = this.link;
-      this.link = this.link.cloneNode(false);
-      Link.__super__.constructor.apply(this, arguments);
-    }
-
-    Link.prototype.shouldIgnore = function() {
-      return this.crossOrigin() || this._anchored() || this._nonHtml() || this._optOut() || this._target();
-    };
-
-    Link.prototype._anchored = function() {
-      return (this.hash.length > 0 || this.href.charAt(this.href.length - 1) === '#') && (this.withoutHash() === (new ComponentUrl).withoutHash());
-    };
-
-    Link.prototype._nonHtml = function() {
-      return this.pathname.match(/\.[a-z]+$/g) && !this.pathname.match(new RegExp("\\.(?:" + (Link.HTML_EXTENSIONS.join('|')) + ")?$", 'g'));
-    };
-
-    Link.prototype._optOut = function() {
-      var ignore, link;
-      link = this.originalElement;
-      while (!(ignore || link === document)) {
-        ignore = link.getAttribute('data-no-turbolink') != null;
-        link = link.parentNode;
-      }
-      return ignore;
-    };
-
-    Link.prototype._target = function() {
-      return this.link.target.length !== 0;
-    };
-
-    return Link;
-
-  })(ComponentUrl);
-
-  Click = (function() {
-    Click.installHandlerLast = function(event) {
-      if (!event.defaultPrevented) {
-        document.removeEventListener('click', Click.handle, false);
-        return document.addEventListener('click', Click.handle, false);
-      }
-    };
-
-    Click.handle = function(event) {
-      return new Click(event);
-    };
-
-    function Click(event1) {
-      this.event = event1;
-      if (this.event.defaultPrevented) {
-        return;
-      }
-      this._extractLink();
-      if (this._validForTurbolinks()) {
-        if (!pageChangePrevented(this.link.absolute)) {
-          visit(this.link.href);
-        }
-        this.event.preventDefault();
-      }
-    }
-
-    Click.prototype._extractLink = function() {
-      var link;
-      link = this.event.target;
-      while (!(!link.parentNode || link.nodeName === 'A')) {
-        link = link.parentNode;
-      }
-      if (link.nodeName === 'A' && link.href.length !== 0) {
-        return this.link = new Link(link);
-      }
-    };
-
-    Click.prototype._validForTurbolinks = function() {
-      return (this.link != null) && !(this.link.shouldIgnore() || this._nonStandardClick());
-    };
-
-    Click.prototype._nonStandardClick = function() {
-      return this.event.which > 1 || this.event.metaKey || this.event.ctrlKey || this.event.shiftKey || this.event.altKey;
-    };
-
-    return Click;
-
-  })();
-
-  ProgressBar = (function() {
-    var className;
-
-    className = 'turbolinks-progress-bar';
-
-    function ProgressBar(elementSelector) {
-      this.elementSelector = elementSelector;
-      this._trickle = bind(this._trickle, this);
-      this.value = 0;
-      this.content = '';
-      this.speed = 300;
-      this.opacity = 0.99;
-      this.install();
-    }
-
-    ProgressBar.prototype.install = function() {
-      this.element = document.querySelector(this.elementSelector);
-      this.element.classList.add(className);
-      this.styleElement = document.createElement('style');
-      document.head.appendChild(this.styleElement);
-      return this._updateStyle();
-    };
-
-    ProgressBar.prototype.uninstall = function() {
-      this.element.classList.remove(className);
-      return document.head.removeChild(this.styleElement);
-    };
-
-    ProgressBar.prototype.start = function() {
-      return this.advanceTo(5);
-    };
-
-    ProgressBar.prototype.advanceTo = function(value) {
-      var ref;
-      if ((value > (ref = this.value) && ref <= 100)) {
-        this.value = value;
-        this._updateStyle();
-        if (this.value === 100) {
-          return this._stopTrickle();
-        } else if (this.value > 0) {
-          return this._startTrickle();
-        }
-      }
-    };
-
-    ProgressBar.prototype.done = function() {
-      if (this.value > 0) {
-        this.advanceTo(100);
-        return this._reset();
-      }
-    };
-
-    ProgressBar.prototype._reset = function() {
-      var originalOpacity;
-      originalOpacity = this.opacity;
-      setTimeout((function(_this) {
-        return function() {
-          _this.opacity = 0;
-          return _this._updateStyle();
-        };
-      })(this), this.speed / 2);
-      return setTimeout((function(_this) {
-        return function() {
-          _this.value = 0;
-          _this.opacity = originalOpacity;
-          return _this._withSpeed(0, function() {
-            return _this._updateStyle(true);
-          });
-        };
-      })(this), this.speed);
-    };
-
-    ProgressBar.prototype._startTrickle = function() {
-      if (this.trickling) {
-        return;
-      }
-      this.trickling = true;
-      return setTimeout(this._trickle, this.speed);
-    };
-
-    ProgressBar.prototype._stopTrickle = function() {
-      return delete this.trickling;
-    };
-
-    ProgressBar.prototype._trickle = function() {
-      if (!this.trickling) {
-        return;
-      }
-      this.advanceTo(this.value + Math.random() / 2);
-      return setTimeout(this._trickle, this.speed);
-    };
-
-    ProgressBar.prototype._withSpeed = function(speed, fn) {
-      var originalSpeed, result;
-      originalSpeed = this.speed;
-      this.speed = speed;
-      result = fn();
-      this.speed = originalSpeed;
-      return result;
-    };
-
-    ProgressBar.prototype._updateStyle = function(forceRepaint) {
-      if (forceRepaint == null) {
-        forceRepaint = false;
-      }
-      if (forceRepaint) {
-        this._changeContentToForceRepaint();
-      }
-      return this.styleElement.textContent = this._createCSSRule();
-    };
-
-    ProgressBar.prototype._changeContentToForceRepaint = function() {
-      return this.content = this.content === '' ? ' ' : '';
-    };
-
-    ProgressBar.prototype._createCSSRule = function() {
-      return this.elementSelector + "." + className + "::before {\n  content: '" + this.content + "';\n  position: fixed;\n  top: 0;\n  left: 0;\n  z-index: 2000;\n  background-color: #0076ff;\n  height: 3px;\n  opacity: " + this.opacity + ";\n  width: " + this.value + "%;\n  transition: width " + this.speed + "ms ease-out, opacity " + (this.speed / 2) + "ms ease-in;\n  transform: translate3d(0,0,0);\n}";
-    };
-
-    return ProgressBar;
-
-  })();
-
-  bypassOnLoadPopstate = function(fn) {
-    return setTimeout(fn, 500);
-  };
-
-  installDocumentReadyPageEventTriggers = function() {
-    return document.addEventListener('DOMContentLoaded', (function() {
-      triggerEvent(EVENTS.CHANGE);
-      return triggerEvent(EVENTS.UPDATE);
-    }), true);
-  };
-
-  installJqueryAjaxSuccessPageUpdateTrigger = function() {
-    if (typeof jQuery !== 'undefined') {
-      return jQuery(document).on('ajaxSuccess', function(event, xhr, settings) {
-        if (!jQuery.trim(xhr.responseText)) {
-          return;
-        }
-        return triggerEvent(EVENTS.UPDATE);
-      });
-    }
-  };
-
-  installHistoryChangeHandler = function(event) {
-    var cachedPage, ref;
-    if ((ref = event.state) != null ? ref.turbolinks : void 0) {
-      if (cachedPage = pageCache[(new ComponentUrl(event.state.url)).absolute]) {
-        cacheCurrentPage();
-        return fetchHistory(cachedPage);
-      } else {
-        return visit(event.target.location.href);
-      }
-    }
-  };
-
-  initializeTurbolinks = function() {
-    rememberCurrentUrl();
-    rememberCurrentState();
-    document.addEventListener('click', Click.installHandlerLast, true);
-    window.addEventListener('hashchange', function(event) {
-      rememberCurrentUrl();
-      return rememberCurrentState();
-    }, false);
-    return bypassOnLoadPopstate(function() {
-      return window.addEventListener('popstate', installHistoryChangeHandler, false);
-    });
-  };
-
-  historyStateIsDefined = window.history.state !== void 0 || navigator.userAgent.match(/Firefox\/2[6|7]/);
-
-  browserSupportsPushState = window.history && window.history.pushState && window.history.replaceState && historyStateIsDefined;
-
-  browserIsntBuggy = !navigator.userAgent.match(/CriOS\//);
-
-  requestMethodIsSafe = (ref = popCookie('request_method')) === 'GET' || ref === '';
-
-  browserSupportsTurbolinks = browserSupportsPushState && browserIsntBuggy && requestMethodIsSafe;
-
-  browserSupportsCustomEvents = document.addEventListener && document.createEvent;
-
-  if (browserSupportsCustomEvents) {
-    installDocumentReadyPageEventTriggers();
-    installJqueryAjaxSuccessPageUpdateTrigger();
-  }
-
-  if (browserSupportsTurbolinks) {
-    visit = fetch;
-    initializeTurbolinks();
-  } else {
-    visit = function(url) {
-      return document.location.href = url;
-    };
-  }
-
-  this.Turbolinks = {
-    visit: visit,
-    pagesCached: pagesCached,
-    enableTransitionCache: enableTransitionCache,
-    enableProgressBar: enableProgressBar,
-    allowLinkExtensions: Link.allowExtensions,
-    supported: browserSupportsTurbolinks,
-    EVENTS: clone(EVENTS)
-  };
-
-}).call(this);
-(function() {
-
-
-}).call(this);
 // This is a manifest file that'll be compiled into application.js, which will include all the files
 // listed below.
 //
