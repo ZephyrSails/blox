@@ -50,8 +50,28 @@ group :development do
 end
 
 gem 'bootstrap-sass' # , '~> 3.3.5'
+gem "font-awesome-rails"
+# config file in /config/Settings
+gem "config"
 
 # gem 'sass-rails', '>= 3.2'
+
+# Markdown 格式 & 文本处理
+gem 'redcarpet'
+gem 'rouge'
+gem 'auto-space'
+gem 'nokogiri', '1.6.5'
+gem 'md_emoji'
+gem 'rails_autolink'
+
+# for api 跨域
+gem 'rack-cors', require: 'rack/cors'
+gem 'rack-utf8_sanitizer'
+
+# gem 'redcarpet', '~> 3.3.3'
+# gem 'rouge', '~> 1.8.0'
+# gem 'auto-space', '0.0.4'
+# gem 'nokogiri', '1.6.5'
 
 # gem 'cardboard_cms'
 # gem 'cardboard_cms', '~> 0.3.1'

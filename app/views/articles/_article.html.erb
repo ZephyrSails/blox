@@ -1,0 +1,13 @@
+<div class="post-preview">
+    <a href='<%= "articles/#{article.id}" %>'>
+      <h2 class="post-title">
+        <%= article.title %>
+      </h2>
+      <h3 class="post-subtitle">
+        <%= truncate(article.subtitle, length: 200) %>
+        <!-- Today is 2015_1024, programmer's day, and also, my blog is sailing. -->
+      </h3>
+    </a>
+    <p class="post-meta">Posted by <a href="#">ZephyrSails</a> on <%= article.created_at %></p>
+    <hr>
+</div>

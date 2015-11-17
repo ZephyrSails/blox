@@ -37,6 +37,8 @@ GEM
       thread_safe (~> 0.3, >= 0.3.4)
       tzinfo (~> 1.1)
     arel (6.0.3)
+    auto-space (0.0.4)
+      activesupport (> 3.0.0)
     autoprefixer-rails (6.0.3)
       execjs
       json
@@ -55,9 +57,15 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.9.1.1)
+    config (1.0.0)
+      activesupport (>= 3.0)
+      deep_merge (~> 1.0.0)
     debug_inspector (0.0.2)
+    deep_merge (1.0.1)
     erubis (2.7.0)
     execjs (2.6.0)
+    font-awesome-rails (4.4.0.0)
+      railties (>= 3.2, < 5.0)
     globalid (0.3.6)
       activesupport (>= 4.1.0)
     i18n (0.7.0)
@@ -74,15 +82,21 @@ GEM
       nokogiri (>= 1.5.9)
     mail (2.6.3)
       mime-types (>= 1.16, < 3)
+    md_emoji (1.0.2)
+      railties (>= 3.1.0)
+      redcarpet (>= 2.0)
     mime-types (2.6.2)
     mini_portile (0.6.2)
-    minitest (5.8.1)
+    minitest (5.8.2)
     multi_json (1.11.2)
-    nokogiri (1.6.6.2)
+    nokogiri (1.6.5)
       mini_portile (~> 0.6.0)
     rack (1.6.4)
+    rack-cors (0.4.0)
     rack-test (0.6.3)
       rack (>= 1.0)
+    rack-utf8_sanitizer (1.3.1)
+      rack (~> 1.0)
     rails (4.2.4)
       actionmailer (= 4.2.4)
       actionpack (= 4.2.4)
@@ -102,6 +116,8 @@ GEM
       rails-deprecated_sanitizer (>= 1.0.1)
     rails-html-sanitizer (1.0.2)
       loofah (~> 2.0)
+    rails_autolink (1.1.6)
+      rails (> 3.1)
     railties (4.2.4)
       actionpack (= 4.2.4)
       activesupport (= 4.2.4)
@@ -111,6 +127,8 @@ GEM
     rake (10.4.2)
     rdoc (4.2.0)
       json (~> 1.4)
+    redcarpet (3.3.3)
+    rouge (1.10.1)
     sass (3.4.19)
     sass-rails (5.0.4)
       railties (>= 4.0.0, < 5.0)
@@ -156,13 +174,23 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  auto-space
   awesome_print
   bootstrap-sass
   byebug
   coffee-rails (~> 4.1.0)
+  config
+  font-awesome-rails
   jbuilder (~> 2.0)
   jquery-rails
+  md_emoji
+  nokogiri (= 1.6.5)
+  rack-cors
+  rack-utf8_sanitizer
   rails (= 4.2.4)
+  rails_autolink
+  redcarpet
+  rouge
   sass-rails (~> 5.0)
   sdoc (~> 0.4.0)
   spring

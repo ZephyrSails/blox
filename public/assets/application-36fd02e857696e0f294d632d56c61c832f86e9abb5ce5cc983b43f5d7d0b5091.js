@@ -11651,7 +11651,6 @@ jQuery(document).ready(function($) {
 
     //primary navigation slide-in effect
     if ($(window).width() > MQL) {
-      console.log("what?");
 
         var headerHeight = $('.navbar-custom').height();
         $(window).on('scroll', {
@@ -11664,10 +11663,8 @@ jQuery(document).ready(function($) {
                     //if scrolling up...
                     if (currentTop > 0 && $('.navbar-custom').hasClass('is-fixed')) {
                         $('.navbar-custom').addClass('is-visible');
-                        console.log("what?");
                     } else {
                         $('.navbar-custom').removeClass('is-visible is-fixed');
-                        // console.log("what?");
                     }
                 } else {
                     //if scrolling down...
@@ -15085,6 +15082,7 @@ jQuery(document).ready(function($) {
 // about supported directives.
 //
 //
+
 
 
 
