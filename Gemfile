@@ -68,6 +68,8 @@ gem 'rails_autolink'
 gem 'rack-cors', require: 'rack/cors'
 gem 'rack-utf8_sanitizer'
 
+gem "rails-settings-cached", "~> 0.4.0"
+
 # gem 'redcarpet', '~> 3.3.3'
 # gem 'rouge', '~> 1.8.0'
 # gem 'auto-space', '0.0.4'
