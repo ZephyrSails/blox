@@ -4,17 +4,20 @@
  * Licensed under Apache 2.0 (https://github.com/IronSummitMedia/startbootstrap/blob/gh-pages/LICENSE)
  */
 
+a {
+  text-decoration: none;
+}
 body {
   font-family: 'Lora', 'Times New Roman', serif;
   font-size: 20px;
   color: #404040;
 }
 p {
-  line-height: 1.5;
+  /*line-height: 1.5;*/
   margin: 30px 0;
 }
 p a {
-  text-decoration: underline;
+  text-decoration: none;
 }
 h1,
 h2,
@@ -167,7 +170,7 @@ hr.small {
 .intro-header .site-heading .subheading,
 .intro-header .page-heading .subheading {
   font-size: 24px;
-  line-height: 1.1;
+  /*line-height: 1.1;*/
   display: block;
   font-family: 'Open Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 300;
@@ -184,7 +187,7 @@ hr.small {
 }
 .intro-header .post-heading .subheading,
 .intro-header .post-heading .meta {
-  line-height: 1.1;
+  /*line-height: 1.1;*/
   display: block;
 }
 .intro-header .post-heading .subheading {
@@ -302,7 +305,7 @@ footer .copyright {
   top: 2em;
   margin: 0;
   font-size: 0.85em;
-  line-height: 1.764705882em;
+  /*line-height: 1.764705882em;*/
   vertical-align: middle;
   vertical-align: baseline;
   opacity: 0;

@@ -55,7 +55,7 @@ group :assets do
   # gem 'uglifier'
 end
 
-gem 'bootstrap-sass', '~> 3.3.6'
+# gem 'bootstrap-sass', '~> 3.3.6'
 gem "font-awesome-rails"
 # config file in /config/Settings
 gem "config"
@@ -81,12 +81,14 @@ gem 'thin'
 gem 'puma'
 # https://github.com/activeadmin/activeadmin
 gem 'activeadmin', github: 'activeadmin'
+gem 'active_skin'
 
 # Plus integrations with:
 gem 'devise'
 gem 'cancan' # or cancancan
 gem 'draper'
 gem 'pundit'
+
 # gem 'redcarpet', '~> 3.3.3'
 # gem 'rouge', '~> 1.8.0'
 # gem 'auto-space', '0.0.4'
