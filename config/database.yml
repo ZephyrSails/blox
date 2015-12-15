@@ -7,8 +7,10 @@
 default: &default
   adapter: mysql2
   encoding: utf8mb4
-  username: blox
-  password: Blox123456
+  # username: blox
+  # password: Blox123456
+  username: root
+  password: Glados
   host: localhost
 
   # adapter: sqlite3
