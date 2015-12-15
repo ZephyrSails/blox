@@ -18,5 +18,6 @@
 
 /config/secrets.yml
 /config/secrets.yml
+/config/database.yml
 
 blox_production

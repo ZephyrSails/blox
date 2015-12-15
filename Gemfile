@@ -89,6 +89,8 @@ gem 'cancan' # or cancancan
 gem 'draper'
 gem 'pundit'
 
+gem 'mysql2' # , '~> 0.3.18'
+
 # gem 'redcarpet', '~> 3.3.3'
 # gem 'rouge', '~> 1.8.0'
 # gem 'auto-space', '0.0.4'
