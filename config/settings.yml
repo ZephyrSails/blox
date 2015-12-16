@@ -5,6 +5,8 @@ backgrounds:
 
 article_stamps: ["lab", "log", "tech", "thought", "other" ,"all"]
 
+error: -1
+
 # article_type:
 #   science: "science"
 #   tech: "tech"

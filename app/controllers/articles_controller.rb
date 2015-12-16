@@ -1,8 +1,17 @@
 class ArticlesController < ApplicationController
 
   def index
-    @articles_with_stamp = Article.where(stamp: params[:stamp])
+    # @articles_with_stamp = Article.where(stamp: params[:stamp])
     @articles = Article.where.not(stamp: "link")
+
+    if params[:stamp] == "all" or params[:stamp] == nil
+      @articles = Article.where.not(stamp: "link").reverse
+    elsif Settings.article_stamps.include? params[:stamp]
+      @articles = Article.where(stamp: params[:stamp]).reverse
+    else
+      @articles = Settings.error
+    end
+
   end
 
   def show
