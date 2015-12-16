@@ -15,26 +15,28 @@ class ArticlesController < ApplicationController
   end
 
   def show
-    @article = Article.find(params[:id])
+    if params[:id] != nil # Article
+      @is_article = true
+    end
+
+    if @is_article
+      @article = Article.find(params[:id])
+    elsif params[:stamp]
+      @article = Article.find_by(title: params[:stamp])
+    else
+    end
 
     if @article.header != nil and @article.header.remote_image_exists?
       @header_url = @article.header
     else
-      @header_url = ActionController::Base.helpers.asset_path Settings.backgrounds.article
+      if @is_article
+        @header_url = ActionController::Base.helpers.asset_path Settings.backgrounds.article
+      else
+        @header_url = ActionController::Base.helpers.asset_path Settings.backgrounds.link
+      end
     end
+
   end
-
-  def link
-    @link_page = Article.find_by(title: params[:stamp])
-
-    if @link_page.header != nil and @link_page.header.remote_image_exists?
-      @header_url = @link_page.header
-    else
-      @header_url = ActionController::Base.helpers.asset_path Settings.backgrounds.link
-    end
-  end
-
-
 
   def set_seo_meta(title = '', meta_keywords = '', meta_description = '')
     @page_title = "#{title}" if title.length > 0

@@ -13,7 +13,7 @@ Rails.application.routes.draw do
 
   root 'articles#index'
 
-  get '/link/:stamp', to: 'articles#link', as: 'link_page'
+  get '/link/:stamp', to: 'articles#show'
 
   # Example of regular route:
   #   get 'products/:id' => 'catalog#view'
