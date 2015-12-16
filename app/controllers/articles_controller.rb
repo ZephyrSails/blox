@@ -2,12 +2,12 @@ class ArticlesController < ApplicationController
 
   def index
     # @articles_with_stamp = Article.where(stamp: params[:stamp])
-    @articles = Article.where.not(stamp: "link")
+    @articles = Article.where.not(stamp: "link").order("created_at DESC")
 
     if params[:stamp] == "all" or params[:stamp] == nil
-      @articles = Article.where.not(stamp: "link").reverse
+      @articles = Article.where.not(stamp: "link").order("created_at DESC")
     elsif Settings.article_stamps.include? params[:stamp]
-      @articles = Article.where(stamp: params[:stamp]).reverse
+      @articles = Article.where(stamp: params[:stamp]).order("created_at DESC")
     else
       @articles = Settings.error
     end
