@@ -11,6 +11,7 @@ Article.create!(title: "wechat", subtitle: "You know what to do", body: "", stam
 Article.find_by(title: "wechat").update(body: "	![](http://a2.qpic.cn/psb?/V14aEuir4EVGZU/D7hr7NBesSOU7pkHeDjbjKQss0LQCc2OpVVl9StNGHY!/c/dF0BAAAAAAAA&ek=1&kp=1&pt=0&bo=AAIAAgAAAAABACc!&sce=0-12-12&rf=0-18)")
 
 Article.create!(title: "Zephyr Sails", subtitle: "This is my résumé", body: "", stamp: "link") if Article.find_by(title: "Zephyr Sails") == nil
+
 Article.find_by(title: "Zephyr Sails").update(body: %(## Zephyr Sails
 South China University of Technology, Panyu District, Guangzhou, P.R.China, 510006
 +86 136-6025-8612, zephyrsails@gmail.com
@@ -107,4 +108,4 @@ South China University of Technology, Panyu District, Guangzhou, P.R.China, 5100
 ### INTERESTS
 - Landscape Painting & Photographing
 - Turn based computer game
-))
+), header: "http://blox-header.oss-cn-qingdao.aliyuncs.com/explore.jpg")
