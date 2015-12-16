@@ -2,11 +2,13 @@ class ArticlesController < ApplicationController
 
   def index
     @articles_with_stamp = Article.where(stamp: params[:stamp])
-    @articles = Article.all
+    @articles = Article.where.not(stamp: "link")
   end
 
   def show
     @article = Article.find(params[:id])
+
+    @wechat = Article.find_by(title: "wechat")
   end
 
 
