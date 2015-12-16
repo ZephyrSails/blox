@@ -15,12 +15,11 @@
  *= require_self
  *= require_directory .
  *= require clean-blog.css
- *= require bootstrap.min.css
 
  */
 
 
  @import "font-awesome";
 
- // @import "bootstrap-sprockets";
- // @import "bootstrap";
+ @import "bootstrap-sprockets";
+ @import "bootstrap";

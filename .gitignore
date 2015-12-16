@@ -21,3 +21,5 @@
 /config/database.yml
 
 blox_production
+
+/public/assets
