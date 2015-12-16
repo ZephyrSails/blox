@@ -1,11 +1,15 @@
 <!DOCTYPE html>
-<!-- Main Content -->
+<!-- showing articles -->
 <div class="container">
   <div class="row">
     <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
 
       <% @articles.reverse.each do |article| %>
-        <%= render partial: 'articles/article', object: article %>
+        <% if params[:stamp] == "all" or params[:stamp] == nil %>
+          <%= render partial: 'articles/article', object: article %>
+        <% elsif Settings.article_stamps.include? params[:stamp] and params[:stamp] == article.stamp %>
+          <%= render partial: 'articles/article', object: article %>
+        <% end %>
       <% end %>
 
       <!-- Pager -->

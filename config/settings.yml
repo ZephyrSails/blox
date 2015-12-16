@@ -1,3 +1,11 @@
 backgrounds:
   homepage: "Hawaiian.jpg"
   article: "Rolling.jpg"
+
+article_stamps: ["lab", "log", "tech", "thought", "all"]
+
+# article_type:
+#   science: "science"
+#   tech: "tech"
+#   thought: "thought"
+#   log: "log"
