@@ -1,6 +1,7 @@
 class ArticlesController < ApplicationController
 
   def index
+    @articles_with_stamp = Article.where(stamp: params[:stamp])
     @articles = Article.all
   end
 
@@ -8,7 +9,7 @@ class ArticlesController < ApplicationController
     @article = Article.find(params[:id])
   end
 
-  
+
 
   def set_seo_meta(title = '', meta_keywords = '', meta_description = '')
     @page_title = "#{title}" if title.length > 0

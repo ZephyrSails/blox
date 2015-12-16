@@ -4,20 +4,28 @@
   <div class="row">
     <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
 
-      <% @articles.reverse.each do |article| %>
-        <% if params[:stamp] == "all" or params[:stamp] == nil %>
-          <%= render partial: 'articles/article', object: article %>
-        <% elsif Settings.article_stamps.include? params[:stamp] and params[:stamp] == article.stamp %>
+      <% if params[:stamp] == "all" or params[:stamp] == nil %>
+        <% @articles.reverse.each do |article| %>
           <%= render partial: 'articles/article', object: article %>
         <% end %>
+      <% elsif Settings.article_stamps.include? params[:stamp]%>
+        <% if @articles_with_stamp.empty? %>
+          <h3>This article list is still empty, I'm not ready to put anything in here yet.<br><br>Sorry, maybe next time.</h3>
+        <% else %>
+          <% @articles_with_stamp.reverse.each do |article| %>
+            <%= render partial: 'articles/article', object: article %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <h3>This article list doesn't exist.<br><br>Hum...are you "hacking" around?</h3>
       <% end %>
 
       <!-- Pager -->
-      <ul class="pager">
+      <!-- <ul class="pager">
         <li class="next">
           <a href="#">Older Posts &rarr;</a>
         </li>
-      </ul>
+      </ul> -->
 
     </div>
   </div>
