@@ -7,10 +7,22 @@ class ArticlesController < ApplicationController
 
   def show
     @article = Article.find(params[:id])
+
+    if @article.header != nil and @article.header.remote_image_exists?
+      @header_url = @article.header
+    else
+      @header_url = ActionController::Base.helpers.asset_path Settings.backgrounds.article
+    end
   end
 
   def link
     @link_page = Article.find_by(title: params[:stamp])
+
+    if @link_page.header != nil and @link_page.header.remote_image_exists?
+      @header_url = @link_page.header
+    else
+      @header_url = ActionController::Base.helpers.asset_path Settings.backgrounds.link
+    end
   end
 
 

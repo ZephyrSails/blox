@@ -25,6 +25,8 @@ module Blox
     # Do not swallow errors in after_commit/after_rollback callbacks.
     config.active_record.raise_in_transactional_callbacks = true
     config.assets.compile = true
+
+    Dir[File.join(Rails.root, "lib", "core_extend", "*.rb")].each {|l| require l }
   end
 end
 
