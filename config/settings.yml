@@ -2,7 +2,7 @@ backgrounds:
   homepage: "Hawaiian.jpg"
   article: "Rolling.jpg"
 
-article_stamps: ["lab", "log", "tech", "thought", "all"]
+article_stamps: ["lab", "log", "tech", "thought", "other" ,"all"]
 
 # article_type:
 #   science: "science"
