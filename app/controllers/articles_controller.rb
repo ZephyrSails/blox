@@ -7,8 +7,10 @@ class ArticlesController < ApplicationController
 
   def show
     @article = Article.find(params[:id])
+  end
 
-    @wechat = Article.find_by(title: "wechat")
+  def link
+    @link_page = Article.find_by(title: params[:stamp])
   end
 
 

@@ -13,7 +13,7 @@ Rails.application.routes.draw do
 
   root 'articles#index'
 
-  get '/link/wechat', to: 'articles#show', as: 'wechat'
+  get '/link/:stamp', to: 'articles#link', as: 'link_page'
 
   # Example of regular route:
   #   get 'products/:id' => 'catalog#view'
