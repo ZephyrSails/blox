@@ -7,19 +7,19 @@
   <!-- Page Header -->
   <!-- Set your background image for this header on the line below. -->
   <header class="intro-header" style="background-image: url('<%= @header_url %>')">
-      <div class="container">
-          <div class="row">
-              <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-                  <div class="post-heading">
-                      <h1><%= @article.title %></h1>
-                      <h2 class="subheading"><%= @article.subtitle %></h2>
-                      <% if @is_article %>
-                        <span class="meta">Posted by <a href="/link/Zephyr Sails">Zephyr Sails</a> on August 24, 2014</span>
-                      <% end %>
-                  </div>
-              </div>
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+          <div class="post-heading">
+            <h1><%= @article.title %></h1>
+            <h2 class="subheading"><%= @article.subtitle %></h2>
+            <% if @is_article %>
+              <span class="meta">Posted by <a href="/link/Zephyr Sails">Zephyr Sails</a> on August 24, 2014</span>
+            <% end %>
           </div>
+        </div>
       </div>
+    </div>
   </header>
 <% end %>
 <!-- <article> -->
@@ -32,3 +32,8 @@
     </div>
   </div>
 </article>
+
+<comment>
+  <p><%= @remote_ip %></p>
+
+</comment>

@@ -36,6 +36,8 @@ class ArticlesController < ApplicationController
       end
     end
 
+    @remote_ip = request.remote_ip
+
   end
 
   def set_seo_meta(title = '', meta_keywords = '', meta_description = '')
