@@ -5,8 +5,8 @@ backgrounds:
 
 article_stamps: ["lab", "log", "tech", "thought", "other" ,"all"]
 
-# link:
-#   # local_freegeoip: "http://127.0.0.1:3306/json/"
+link:
+  local_freegeoip: "http://127.0.0.1:8081/json/"
 
 error: -1
 

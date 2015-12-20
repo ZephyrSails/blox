@@ -12,6 +12,7 @@ class ArticlesController < ApplicationController
       @articles = Settings.error
     end
 
+    @geo_string = get_geo_string
   end
 
   def show
@@ -36,16 +37,35 @@ class ArticlesController < ApplicationController
       end
     end
 
-    @remote_ip = request.remote_ip
-    # geo_result = HTTP.get "https://freegeoip.net/json/#{remote_ip}"
-    # @geo_json = JSON.parse(geo_result)
-
   end
 
-  def set_seo_meta(title = '', meta_keywords = '', meta_description = '')
-    @page_title = "#{title}" if title.length > 0
-    @meta_keywords = meta_keywords
-    @meta_description = meta_description
+  def get_geo_string
+    remote_ip = request.remote_ip
+
+    puts remote_ip
+    puts "wozhenshirilegoule"
+
+    begin
+      geo_info = HTTP.get "#{Settings.link.local_freegeoip}#{remote_ip}"
+      geo_json = JSON.parse(geo_info)
+      #{json['country_name']}, #{json['city']
+      geo_string = "#{geo_json['country_name']}, #{geo_json['city']}"
+
+      if geo_string == "" or geo_string == nil
+        raise
+      end
+    rescue
+      geo_string = "uncharted land"
+    end
+    return geo_string
+    # geo_string = "uncharted land"
   end
+
+
+  # def set_seo_meta(title = '', meta_keywords = '', meta_description = '')
+  #   @page_title = "#{title}" if title.length > 0
+  #   @meta_keywords = meta_keywords
+  #   @meta_description = meta_description
+  # end
 
 end

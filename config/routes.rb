@@ -11,7 +11,7 @@ Rails.application.routes.draw do
 
   get '/list/:stamp', to: 'articles#index'
 
-  root 'articles#index'
+  root 'articles#index' #, :controller => 'welcome', :action => :index
 
   get '/link/:stamp', to: 'articles#show'
 

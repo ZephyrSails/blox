@@ -18,27 +18,34 @@
         alert "#{json['country_name']}, #{json['city']}"
 
 
-@visitInit = (remote_ip) ->
-  geo_ip(remote_ip)
+@visitInit = (geo_string) ->
+  greeting(geo_string)
 
-geo_ip = (remote_ip) ->
+greeting = (geo_string) ->
+  # json = JSON.parse(data)
+  delay 1600, ->
+    $('#greeting').fadeOut(500)
+    delay 500, ->
+      $('#greeting').text("你好, Visitor from #{geo_string}")
+      $('#greeting').fadeIn(500)
+
   # remote_ip = "#{@remote_ip}"
-  remote_ip = "183.62.57.157" if remote_ip == "::1"
-  # alert user_name
-
-  $.ajax "http://127.0.0.1:8081/json/#{remote_ip}",
-      headers: {"accept-language": "en-US"}
-      type: 'GET'
-      dataType: 'html'
-      error: (jqXHR, textStatus, errorThrown) ->
-        # $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
-      success: (data, textStatus, jqXHR) ->
-        json = JSON.parse(data)
-        delay 2000, ->
-          $('#greeting').fadeOut(500)
-          delay 500, ->
-            $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
-            $('#greeting').fadeIn(500)
+  # remote_ip = "183.62.57.157" if remote_ip == "::1"
+  # # alert user_name
+  #
+  # $.ajax "http://127.0.0.1:8081/json/#{remote_ip}",
+  #     headers: {"accept-language": "en-US"}
+  #     type: 'GET'
+  #     dataType: 'html'
+  #     error: (jqXHR, textStatus, errorThrown) ->
+  #       # $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
+  #     success: (data, textStatus, jqXHR) ->
+  #       json = JSON.parse(data)
+  #       delay 2000, ->
+  #         $('#greeting').fadeOut(500)
+  #         delay 500, ->
+  #           $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
+  #           $('#greeting').fadeIn(500)
 
 delay = (ms, func) -> setTimeout func, ms
 
