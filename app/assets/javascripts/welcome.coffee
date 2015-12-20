@@ -39,6 +39,7 @@ geo_ip = (remote_ip) ->
   # alert user_name
 
   $.ajax "https://freegeoip.net/json/#{remote_ip}",
+      headers: {"accept-language": "en-US"}
       type: 'GET'
       dataType: 'html'
       error: (jqXHR, textStatus, errorThrown) ->
@@ -46,11 +47,12 @@ geo_ip = (remote_ip) ->
           # $('body').append "AJAX Error: #{textStatus}"
       success: (data, textStatus, jqXHR) ->
         json = JSON.parse(data)
-        delay 1000, ->
-          $('#greeting').fadeOut(500)
-          delay 500, ->
-            $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
-            $('#greeting').fadeIn(500)
+        $('#greeting').fadeOut(500)
+        delay 500, ->
+          $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
+          $('#greeting').fadeIn(500)
+        # delay 1000, ->
+
         # alert
 
 delay = (ms, func) -> setTimeout func, ms
