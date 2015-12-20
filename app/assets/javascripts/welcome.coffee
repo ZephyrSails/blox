@@ -7,7 +7,7 @@
 
   ipAddress = "183.62.57.157" if ipAddress == "::1"
 
-  $.ajax "https://freegeoip.net/json/#{ipAddress}",
+  $.ajax "#{Settings.link.local_freegeoip}#{ipAddress}",
       type: 'GET'
       dataType: 'html'
       error: (jqXHR, textStatus, errorThrown) ->
@@ -20,40 +20,25 @@
 
 @visitInit = (remote_ip) ->
   geo_ip(remote_ip)
-  # remote_ip = "183.62.57.157" if remote_ip == "::1"
-  # alert remote_ip
-  #
-  # $.ajax "https://freegeoip.net/json/#{remote_ip}",
-  #     type: 'GET'
-  #     dataType: 'html'
-  #     error: (jqXHR, textStatus, errorThrown) ->
-  #       alert "error"
-  #         # $('body').append "AJAX Error: #{textStatus}"
-  #     success: (data, textStatus, jqXHR) ->
-  #       json = JSON.parse(data)
-  #       alert "Greeting, visitor from #{json['country_name']}, #{json['city']}"
 
 geo_ip = (remote_ip) ->
   # remote_ip = "#{@remote_ip}"
   remote_ip = "183.62.57.157" if remote_ip == "::1"
   # alert user_name
 
-  $.ajax "https://freegeoip.net/json/#{remote_ip}",
+  $.ajax "http://127.0.0.1:8081/json/#{remote_ip}",
       headers: {"accept-language": "en-US"}
       type: 'GET'
       dataType: 'html'
       error: (jqXHR, textStatus, errorThrown) ->
-        # alert "error"
-          # $('body').append "AJAX Error: #{textStatus}"
+        # $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
       success: (data, textStatus, jqXHR) ->
         json = JSON.parse(data)
-        $('#greeting').fadeOut(500)
-        delay 500, ->
-          $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
-          $('#greeting').fadeIn(500)
-        # delay 1000, ->
-
-        # alert
+        delay 2000, ->
+          $('#greeting').fadeOut(500)
+          delay 500, ->
+            $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
+            $('#greeting').fadeIn(500)
 
 delay = (ms, func) -> setTimeout func, ms
 

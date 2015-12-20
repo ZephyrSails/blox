@@ -98,6 +98,8 @@ gem 'mysql2' # , '~> 0.3.18'
 
 gem 'http'
 
+# https://github.com/fiorix/freegeoip
+
 # gem 'redcarpet', '~> 3.3.3'
 # gem 'rouge', '~> 1.8.0'
 # gem 'auto-space', '0.0.4'
