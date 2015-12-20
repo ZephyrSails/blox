@@ -37,6 +37,8 @@ class ArticlesController < ApplicationController
     end
 
     @remote_ip = request.remote_ip
+    # geo_result = HTTP.get "https://freegeoip.net/json/#{remote_ip}"
+    # @geo_json = JSON.parse(geo_result)
 
   end
 

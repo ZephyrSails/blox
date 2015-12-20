@@ -91,6 +91,13 @@ gem 'pundit'
 
 gem 'mysql2' # , '~> 0.3.18'
 
+# https://github.com/alexreisner/geocoder
+# gem 'geocoder'
+# https://github.com/cjheath/geoip
+# gem 'geoip'
+
+gem 'http'
+
 # gem 'redcarpet', '~> 3.3.3'
 # gem 'rouge', '~> 1.8.0'
 # gem 'auto-space', '0.0.4'

@@ -18,7 +18,7 @@
   <script src="http://s4.cnzz.com/z_stat.php?id=1256986357&web_id=1256986357" language="JavaScript"></script>
 </div>
 
-<body>
+<body onload="visitInit('<%=@remote_ip%>')">
   <!-- Navigation -->
   <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
     <div class="container-fluid">
@@ -74,12 +74,16 @@
           <div class="site-heading">
             <h1>Zephyr Sails<h1>
             <hr class="small">
-            <span class="subheading">programmer</span>
+
+            <span class="subheading" id="greeting")>Programmer</span>
+
           </div>
         </div>
       </div>
     </div>
   </header>
+
+<!-- <a href="#" onclick="paintIt(this, '#990000','<%=$remote_ip%>')" >Paint it red</a> -->
 
 <%= yield %>
 
