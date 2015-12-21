@@ -14,8 +14,8 @@ class ArticlesController < ApplicationController
 
 
     gon.greeting_words = ""
-    @greeting_words = get_geo_string
-    gon.greeting_words = @greeting_words
+    gon.greeting_words = get_geo_string
+    @greeting_words = ""
 
     # end
     # if @cached == nil
@@ -56,19 +56,11 @@ class ArticlesController < ApplicationController
     unknow = Settings.geo_greeting.ip_geo_unknow
 
     if visitor != nil
-      expired = ((Time.now - visitor.last_login) > Settings.geo_greeting.expire_sec) ? true : false
-      # if (Time.now - visitor.last_login) > Settings.geo_greeting.expire_sec
-      #   expired = true
-      # else
-      #   expired = false
-      # end
-      visitor.update(last_login: DateTime.now)
+      expired = ((Time.now - visitor.last_visit_at) > Settings.geo_greeting.expire_sec) ? true : false
+
+      visitor.update(last_visit_at: DateTime.now, visit_count: visitor.visit_count+1)
       region = visitor.country == unknow ? unknow : "#{visitor.country}, #{visitor.city}"
-      # if visitor.country == unknow
-      #   region = unknow
-      # else
-      #   region = "#{visitor.country}, #{visitor.city}"
-      # end
+
       return [expired, "#{prefix} #{region}"]
     end
 
@@ -81,27 +73,12 @@ class ArticlesController < ApplicationController
       city = (geo_json['city'] == "" or geo_json['city'] == nil) ? unknow : geo_json['city']
       state = (geo_json['region_name'] == "" or geo_json['region_name'] == nil) ? unknow : geo_json['region_name']
 
-      # if geo_json['country_name'] == "" or geo_json['country_name'] == nil
-      #   country = unknow
-      # else
-      #   country = geo_json['country_name']
-      # end
-      # if geo_json['city'] == "" or geo_json['city'] == nil
-      #   city = unknow
-      # else
-      #   city = geo_json['city']
-      # end
-      # if geo_json['region_name'] == "" or geo_json['region_name'] == nil
-      #   state = unknow
-      # else
-      #   state = geo_json['region_name']
-      # end
-
     rescue
       get_geo_success = false
       country = unknow
       city = unknow
       state = unknow
+      visit_count = 1
     end
 
     visitor = Visitor.new do |v|
@@ -109,11 +86,14 @@ class ArticlesController < ApplicationController
       v.country = country
       v.city    = city
       v.state   = state
-      v.last_login = DateTime.now
+      v.visit_count   = 1
+      v.last_visit_at = DateTime.now
     end
     visitor.save
 
-    return [true, "#{prefix} #{visitor.country}, #{visitor.city}"]
+    region = (visitor.country == unknow) ? unknow : "#{visitor.country}, #{visitor.city}"
+
+    return [true, "#{prefix} #{region}"]
 
   end
 

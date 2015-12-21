@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20151221090438) do
+ActiveRecord::Schema.define(version: 20151221114528) do
 
   create_table "active_admin_comments", force: :cascade do |t|
     t.string   "namespace"
@@ -84,9 +84,10 @@ ActiveRecord::Schema.define(version: 20151221090438) do
     t.string   "country"
     t.string   "state"
     t.string   "city"
-    t.datetime "last_login"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "last_visit_at"
+    t.datetime "created_at",    null: false
+    t.datetime "updated_at",    null: false
+    t.integer  "visit_count"
   end
 
   add_index "visitors", ["ip"], name: "index_visitors_on_ip"

@@ -12,9 +12,10 @@ visitInit = () ->
 greeting = () ->
   if gon.greeting_words[0]
     $('#greeting').text("I'm a programmer")
-    delay 1600, ->
+    delay 2000, ->
       $('#greeting').fadeOut(800)
       delay 800, ->
+        # gon.greeting_words[0] = false
         $('#greeting').text(gon.greeting_words[1])
         $('#greeting').fadeIn(800)
     # alert "nihao"

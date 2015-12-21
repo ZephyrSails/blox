@@ -5,7 +5,7 @@ class CreateVisitors < ActiveRecord::Migration
       t.string :country
       t.string :state
       t.string :city
-      t.datetime :last_login
+      t.datetime :last_visit_at
 
       t.timestamps null: false
     end

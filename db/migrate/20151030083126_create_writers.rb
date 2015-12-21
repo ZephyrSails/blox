@@ -10,8 +10,8 @@ class CreateWriters < ActiveRecord::Migration
       t.integer  :authority
       t.string   :encrypted_password, default: "", null: false
       t.string   :current_login_ip
-      t.string   :last_login_ip
-      t.datetime :last_login_at
+      t.string   :last_visit_at_ip
+      t.datetime :last_visit_at_at
 
       t.timestamps null: false
     end
