@@ -96,10 +96,10 @@ gem 'mysql2' # , '~> 0.3.18'
 # https://github.com/cjheath/geoip
 # gem 'geoip'
 
-gem 'http'
-
 # http://railscasts.com/episodes/324-passing-data-to-javascript
+gem 'http'
 gem 'gon'
+gem 'country_select'
 
 gem 'redis'
 
