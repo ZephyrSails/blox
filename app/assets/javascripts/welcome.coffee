@@ -2,32 +2,45 @@
 # All this logic will automatically be available in application.js.
 # You can use CoffeeScript in this file: http://coffeescript.org/
 
-@paintIt = (element, backgroundColor, ipAddress) ->
-  element.style.backgroundColor = backgroundColor
+$(document).on "page:change", ->
+  visitInit()
+  # alert "page has loaded!"
 
-  ipAddress = "183.62.57.157" if ipAddress == "::1"
+visitInit = () ->
+  greeting()
 
-  $.ajax "#{Settings.link.local_freegeoip}#{ipAddress}",
-      type: 'GET'
-      dataType: 'html'
-      error: (jqXHR, textStatus, errorThrown) ->
-        alert "error"
-          # $('body').append "AJAX Error: #{textStatus}"
-      success: (data, textStatus, jqXHR) ->
-        json = JSON.parse(data)
-        alert "#{json['country_name']}, #{json['city']}"
-
-
-@visitInit = (geo_string) ->
-  greeting(geo_string)
-
-greeting = (geo_string) ->
+greeting = () ->
+  if gon.greeting_words.startsWith("你好")
+    alert "nihao"
+  # if geo_string
   # json = JSON.parse(data)
   delay 1600, ->
-    $('#greeting').fadeOut(500)
-    delay 500, ->
-      $('#greeting').text("你好, Visitor from #{geo_string}")
-      $('#greeting').fadeIn(500)
+    $('#greeting').fadeOut(800)
+    delay 800, ->
+      $('#greeting').text(gon.greeting_words)
+      $('#greeting').fadeIn(800)
+
+delay = (ms, func) -> setTimeout func, ms
+
+# @paintIt = (element, backgroundColor, ipAddress) ->
+  # element.style.backgroundColor = backgroundColor
+
+  # ipAddress = "183.62.57.157" if ipAddress == "::1"
+
+  # $.ajax "#{Settings.link.local_freegeoip}#{ipAddress}",
+  #     type: 'GET'
+  #     dataType: 'html'
+  #     error: (jqXHR, textStatus, errorThrown) ->
+  #       alert "error"
+  #         # $('body').append "AJAX Error: #{textStatus}"
+  #     success: (data, textStatus, jqXHR) ->
+  #       json = JSON.parse(data)
+  #       alert "#{json['country_name']}, #{json['city']}"
+
+
+
+
+      # return "你好, Visitor from #{geo_string}"
 
   # remote_ip = "#{@remote_ip}"
   # remote_ip = "183.62.57.157" if remote_ip == "::1"
@@ -46,8 +59,6 @@ greeting = (geo_string) ->
   #         delay 500, ->
   #           $('#greeting').text("你好, Visitor from #{json['country_name']}, #{json['city']}")
   #           $('#greeting').fadeIn(500)
-
-delay = (ms, func) -> setTimeout func, ms
 
 
 
@@ -79,17 +90,6 @@ delay = (ms, func) -> setTimeout func, ms
   # element.style.backgroundColor = backgroundColor
   # if textColor?
   #   element.style.color = textColor
-
-# $(document).ready ->
-    # Basic Examples
-    # $.get '/', (data) ->
-    #     $('body').append "Successfully got the page."
-    #
-    # $.post '/',
-    #     userName: 'John Doe'
-    #     favoriteFlavor: 'Mint'
-    #     (data) -> $('body').append "Successfully posted to the page."
-
 
 
     # Advanced Settings

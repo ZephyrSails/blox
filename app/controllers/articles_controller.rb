@@ -12,7 +12,15 @@ class ArticlesController < ApplicationController
       @articles = Settings.error
     end
 
-    @geo_string = get_geo_string
+    Thread.new do
+      set_geo_string
+    end
+    # end
+    # if @cached == nil
+    #   @cached ||= set_geo_string
+    #   gon.greeting_words = @cached
+    # end
+
   end
 
   def show
@@ -39,28 +47,48 @@ class ArticlesController < ApplicationController
 
   end
 
-  def get_geo_string
+  def set_geo_string
     remote_ip = request.remote_ip
+    visitor = Visitor.find_by(id: remote_ip)
+    prefix = "你好, Visitor from"
 
-    puts remote_ip
-    puts "wozhenshirilegoule"
+    if visitor != nil
+      visitor.update(last_login: DateTime.now)
+      return "#{prefix} #{visitor.country}, #{visitor.city}"
+    end
 
     begin
       geo_info = HTTP.get "#{Settings.link.local_freegeoip}#{remote_ip}"
       geo_json = JSON.parse(geo_info)
-      #{json['country_name']}, #{json['city']
-      geo_string = "#{geo_json['country_name']}, #{geo_json['city']}"
+      get_geo_success = true
 
-      if geo_string == "" or geo_string == nil
-        raise
-      end
+      geo_json['country_name'] = "unknow" if geo_json['country_name'] == "" or geo_json['country_name'] == nil
+      geo_json['city'] = "unknow" if geo_json['city'] == "" or geo_json['city'] == nil
+      geo_json['region_name'] = "unknow" if geo_json['region_name'] == "" or geo_json['region_name'] == nil
     rescue
-      geo_string = "uncharted land"
+      get_geo_success = false
     end
-    return geo_string
+
+    visitor = Visitor.new do |v|
+      v.ip      = remote_ip
+      v.country = geo_json['country_name']
+      v.city    = geo_json['city']
+      v.state   = geo_json['region_name']
+      v.last_login = DateTime.now
+    end
+    visitor.save
+
+    return = "#{prefix} #{visitor.country}, #{visitor.city}"
+
+
+
+    puts 'see this onece'
+    # gon.greeting_words = "你好, Visitor from #{geo_string}"
+
+    return "你好, Visitor from #{geo_string}"
+    # return @geo_string
     # geo_string = "uncharted land"
   end
-
 
   # def set_seo_meta(title = '', meta_keywords = '', meta_description = '')
   #   @page_title = "#{title}" if title.length > 0

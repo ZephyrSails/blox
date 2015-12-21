@@ -98,6 +98,11 @@ gem 'mysql2' # , '~> 0.3.18'
 
 gem 'http'
 
+# http://railscasts.com/episodes/324-passing-data-to-javascript
+gem 'gon'
+
+gem 'redis'
+
 # https://github.com/fiorix/freegeoip
 
 # gem 'redcarpet', '~> 3.3.3'

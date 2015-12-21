@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20151216111109) do
+ActiveRecord::Schema.define(version: 20151221090438) do
 
   create_table "active_admin_comments", force: :cascade do |t|
     t.string   "namespace"
@@ -78,6 +78,18 @@ ActiveRecord::Schema.define(version: 20151216111109) do
   end
 
   add_index "settings", ["thing_type", "thing_id", "var"], name: "index_settings_on_thing_type_and_thing_id_and_var", unique: true
+
+  create_table "visitors", force: :cascade do |t|
+    t.string   "ip"
+    t.string   "country"
+    t.string   "state"
+    t.string   "city"
+    t.datetime "last_login"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  add_index "visitors", ["ip"], name: "index_visitors_on_ip"
 
   create_table "writers", force: :cascade do |t|
     t.string   "email",                           null: false

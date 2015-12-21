@@ -9,4 +9,7 @@ module ApplicationHelper
     # TODO: This method slow, 3.5ms per call in topic body
     sanitize body, tags: ALLOW_TAGS, attributes: ALLOW_ATTRIBUTES
   end
+
+  
+
 end

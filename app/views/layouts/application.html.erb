@@ -14,77 +14,76 @@
 
 </head>
 
-<div style="display:none">
+<!-- <div style="display:none">
   <script src="http://s4.cnzz.com/z_stat.php?id=1256986357&web_id=1256986357" language="JavaScript"></script>
-</div>
+</div> -->
 
-<body onload="visitInit('<%=@geo_string%>')">
+<%= Gon::Base.render_data %>
   <!-- Navigation -->
-  <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
-    <div class="container-fluid">
-      <!-- Brand and toggle get grouped for better mobile display -->
-      <div class="navbar-header page-scroll">
-        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-          <span class="sr-only">Toggle navigation</span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-        </button>
-        <a class="navbar-brand" href="/link/Zephyr Sails">ZephyrSails</a>
-      </div>
-
-      <!-- Collect the nav links, forms, and other content for toggling -->
-      <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-        <ul class="nav navbar-nav navbar-right">
-
-          <li>
-            <a href="/list/log">Log</a>
-          </li>
-          <!-- <li>
-            <a href="/list/lab">Lab</a>
-          </li> -->
-          <li>
-            <a href="/list/tech">Tech</a>
-          </li>
-          <li>
-            <a href="/list/thought">Thought</a>
-          </li>
-          <li>
-            <a href="/list/other">Other</a>
-          </li>
-          <li>
-            <a href="/">All</a>
-          </li>
-
-        </ul>
-      </div>
-      <!-- /.navbar-collapse -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header page-scroll">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/link/Zephyr Sails">ZephyrSails</a>
     </div>
-    <!-- /.container -->
-  </nav>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav navbar-right">
+
+        <li>
+          <a href="/list/log">Log</a>
+        </li>
+        <!-- <li>
+          <a href="/list/lab">Lab</a>
+        </li> -->
+        <li>
+          <a href="/list/tech">Tech</a>
+        </li>
+        <li>
+          <a href="/list/thought">Thought</a>
+        </li>
+        <li>
+          <a href="/list/other">Other</a>
+        </li>
+        <li>
+          <a href="/">All</a>
+        </li>
+
+      </ul>
+    </div>
+    <!-- /.navbar-collapse -->
+  </div>
+  <!-- /.container -->
+</nav>
 
   <!-- Page Header -->
   <!-- Set your background image for this header on the line below. -->
   <style><%= yield :stylesheets %></style>
-  <%= yield :header %>
+
+<%= yield :header %>
+
   <header id="header-background" class="intro-header" style="background-image: url('<%= asset_path Settings.backgrounds.homepage %>')">
     <div class="container">
       <div class="row">
         <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
           <div class="site-heading">
-            <h1>Zephyr Sails<h1>
+            <h1>Zephyr Sails</h1>
             <hr class="small">
-
-            <span class="subheading" id="greeting")>Programmer</span>
-
+            <span class="subheading" id="greeting")>I'm a programmer</span>
           </div>
         </div>
       </div>
     </div>
   </header>
-
+</body>
 <!-- <a href="#" onclick="paintIt(this, '#990000','<%=$remote_ip%>')" >Paint it red</a> -->
-
 <%= yield %>
 
 <!-- Footer -->
