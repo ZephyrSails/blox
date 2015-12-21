@@ -10,15 +10,20 @@ visitInit = () ->
   greeting()
 
 greeting = () ->
-  if gon.greeting_words.startsWith("你好")
-    alert "nihao"
+  if gon.greeting_words[0]
+    $('#greeting').text("I'm a programmer")
+    delay 1600, ->
+      $('#greeting').fadeOut(800)
+      delay 800, ->
+        $('#greeting').text(gon.greeting_words[1])
+        $('#greeting').fadeIn(800)
+    # alert "nihao"
+  else
+    $('#greeting').text(gon.greeting_words[1])
+
   # if geo_string
   # json = JSON.parse(data)
-  delay 1600, ->
-    $('#greeting').fadeOut(800)
-    delay 800, ->
-      $('#greeting').text(gon.greeting_words)
-      $('#greeting').fadeIn(800)
+
 
 delay = (ms, func) -> setTimeout func, ms
 

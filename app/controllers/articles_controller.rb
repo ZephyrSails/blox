@@ -12,9 +12,11 @@ class ArticlesController < ApplicationController
       @articles = Settings.error
     end
 
-    Thread.new do
-      set_geo_string
-    end
+
+    gon.greeting_words = ""
+    @greeting_words = get_geo_string
+    gon.greeting_words = @greeting_words
+
     # end
     # if @cached == nil
     #   @cached ||= set_geo_string
@@ -47,14 +49,27 @@ class ArticlesController < ApplicationController
 
   end
 
-  def set_geo_string
-    remote_ip = request.remote_ip
-    visitor = Visitor.find_by(id: remote_ip)
-    prefix = "你好, Visitor from"
+  def get_geo_string
+    remote_ip = request.remote_ip.to_s
+    visitor = Visitor.find_by(ip: remote_ip)
+    prefix = Settings.geo_greeting.prefix
+    unknow = Settings.geo_greeting.ip_geo_unknow
 
     if visitor != nil
+      expired = ((Time.now - visitor.last_login) > Settings.geo_greeting.expire_sec) ? true : false
+      # if (Time.now - visitor.last_login) > Settings.geo_greeting.expire_sec
+      #   expired = true
+      # else
+      #   expired = false
+      # end
       visitor.update(last_login: DateTime.now)
-      return "#{prefix} #{visitor.country}, #{visitor.city}"
+      region = visitor.country == unknow ? unknow : "#{visitor.country}, #{visitor.city}"
+      # if visitor.country == unknow
+      #   region = unknow
+      # else
+      #   region = "#{visitor.country}, #{visitor.city}"
+      # end
+      return [expired, "#{prefix} #{region}"]
     end
 
     begin
@@ -62,32 +77,44 @@ class ArticlesController < ApplicationController
       geo_json = JSON.parse(geo_info)
       get_geo_success = true
 
-      geo_json['country_name'] = "unknow" if geo_json['country_name'] == "" or geo_json['country_name'] == nil
-      geo_json['city'] = "unknow" if geo_json['city'] == "" or geo_json['city'] == nil
-      geo_json['region_name'] = "unknow" if geo_json['region_name'] == "" or geo_json['region_name'] == nil
+      country = geo_json['country_name'] == "" or geo_json['country_name'] == nil ? unknow : geo_json['country_name']
+      city = geo_json['city'] == "" or geo_json['city'] == nil ? unknow : geo_json['city']
+      state = geo_json['region_name'] == "" or geo_json['region_name'] == nil ? unknow : geo_json['region_name']
+
+      # if geo_json['country_name'] == "" or geo_json['country_name'] == nil
+      #   country = unknow
+      # else
+      #   country = geo_json['country_name']
+      # end
+      # if geo_json['city'] == "" or geo_json['city'] == nil
+      #   city = unknow
+      # else
+      #   city = geo_json['city']
+      # end
+      # if geo_json['region_name'] == "" or geo_json['region_name'] == nil
+      #   state = unknow
+      # else
+      #   state = geo_json['region_name']
+      # end
+
     rescue
       get_geo_success = false
+      country = unknow
+      city = unknow
+      state = unknow
     end
 
     visitor = Visitor.new do |v|
       v.ip      = remote_ip
-      v.country = geo_json['country_name']
-      v.city    = geo_json['city']
-      v.state   = geo_json['region_name']
+      v.country = country
+      v.city    = city
+      v.state   = state
       v.last_login = DateTime.now
     end
     visitor.save
 
-    return = "#{prefix} #{visitor.country}, #{visitor.city}"
+    return [true, "#{prefix} #{visitor.country}, #{visitor.city}"]
 
-
-
-    puts 'see this onece'
-    # gon.greeting_words = "你好, Visitor from #{geo_string}"
-
-    return "你好, Visitor from #{geo_string}"
-    # return @geo_string
-    # geo_string = "uncharted land"
   end
 
   # def set_seo_meta(title = '', meta_keywords = '', meta_description = '')
