@@ -77,9 +77,9 @@ class ArticlesController < ApplicationController
       geo_json = JSON.parse(geo_info)
       get_geo_success = true
 
-      country = geo_json['country_name'] == "" or geo_json['country_name'] == nil ? unknow : geo_json['country_name']
-      city = geo_json['city'] == "" or geo_json['city'] == nil ? unknow : geo_json['city']
-      state = geo_json['region_name'] == "" or geo_json['region_name'] == nil ? unknow : geo_json['region_name']
+      country = (geo_json['country_name'] == "" or geo_json['country_name'] == nil) ? unknow : geo_json['country_name']
+      city = (geo_json['city'] == "" or geo_json['city'] == nil) ? unknow : geo_json['city']
+      state = (geo_json['region_name'] == "" or geo_json['region_name'] == nil) ? unknow : geo_json['region_name']
 
       # if geo_json['country_name'] == "" or geo_json['country_name'] == nil
       #   country = unknow
