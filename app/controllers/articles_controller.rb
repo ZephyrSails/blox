@@ -61,7 +61,8 @@ class ArticlesController < ApplicationController
       visitor.update(last_visit_at: DateTime.now, visit_count: visitor.visit_count+1)
       region = visitor.country == unknow ? unknow : "#{visitor.country}, #{visitor.city}"
 
-      return [expired, "#{prefix} #{region}"]
+      # return [expired, "#{prefix} #{region}"]
+      return [expired, get_greeting_string(visitor.country, visitor.state, visitor.city)]
     end
 
     begin
@@ -76,8 +77,8 @@ class ArticlesController < ApplicationController
     rescue
       get_geo_success = false
       country = unknow
-      city = unknow
-      state = unknow
+      city    = unknow
+      state   = unknow
       visit_count = 1
     end
 
@@ -93,8 +94,16 @@ class ArticlesController < ApplicationController
 
     region = (visitor.country == unknow) ? unknow : "#{visitor.country}, #{visitor.city}"
 
-    return [true, "#{prefix} #{region}"]
+    # return [true, "#{prefix} #{region}"]
+    return [true, get_greeting_string(country, state, city)]
 
+  end
+
+  def get_greeting_string(country, state, city)
+    greeting_string = "#{Settings.geo_greeting.prefix} #{country}"
+    greeting_string += "#{state}" if state != Settings.geo_greeting.ip_geo_unknow
+    greeting_string += "#{city}" if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
+    return greeting_string
   end
 
   # def set_seo_meta(title = '', meta_keywords = '', meta_description = '')

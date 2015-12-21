@@ -14,6 +14,7 @@ geo_greeting:
   prefix: "你好, Visitor from"
   ip_geo_unknow: "unknow region"
   expire_sec: 64
+  unpersice_country: ["China"]
 
 
 

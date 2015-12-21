@@ -14,7 +14,7 @@ greeting = () ->
     $('#greeting').text("I'm a programmer")
     delay 2000, ->
       $('#greeting').fadeOut(800)
-      delay 800, ->
+      delay 799, ->
         # gon.greeting_words[0] = false
         $('#greeting').text(gon.greeting_words[1])
         $('#greeting').fadeIn(800)
