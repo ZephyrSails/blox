@@ -100,9 +100,13 @@ class ArticlesController < ApplicationController
   end
 
   def get_greeting_string(country, state, city)
-    greeting_string = "#{Settings.geo_greeting.prefix} #{country}"
-    greeting_string += "#{state}" if state != Settings.geo_greeting.ip_geo_unknow
-    greeting_string += "#{city}" if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
+    greeting_string = Settings.geo_greeting.prefix
+    greeting_string += " #{city}" if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
+    greeting_string += ", #{state}" if state != Settings.geo_greeting.ip_geo_unknow
+    greeting_string += ", #{country}"
+    # greeting_string += "#{state}" if state != Settings.geo_greeting.ip_geo_unknow
+    # greeting_string += "#{city}" if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
+
     return greeting_string
   end
 
