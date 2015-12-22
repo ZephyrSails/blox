@@ -107,7 +107,7 @@ class ArticlesController < ApplicationController
     elsif country == Settings.geo_greeting.ip_geo_unknow
       greeting_string = Settings.geo_greeting.prefix0
     else
-      greeting_string = Settings.geo_greeting.prefix0
+      greeting_string = Settings.geo_greeting.prefix
     end
 
     greeting_string += " #{city}," if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
