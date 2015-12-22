@@ -58,11 +58,12 @@ class ArticlesController < ApplicationController
     if visitor != nil
       expired = ((Time.now - visitor.last_visit_at) > Settings.geo_greeting.expire_sec) ? true : false
 
+      last_visit_at = visitor.last_visit_at
       visitor.update(last_visit_at: DateTime.now, visit_count: visitor.visit_count+1)
       region = visitor.country == unknow ? unknow : "#{visitor.country}, #{visitor.city}"
 
       # return [expired, "#{prefix} #{region}"]
-      return [expired, get_greeting_string(visitor.country, visitor.state, visitor.city, visitor.last_visit_at)]
+      return [expired, get_greeting_string(visitor.country, visitor.state, visitor.city, last_visit_at)]
     end
 
     begin
