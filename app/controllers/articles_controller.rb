@@ -62,7 +62,7 @@ class ArticlesController < ApplicationController
       region = visitor.country == unknow ? unknow : "#{visitor.country}, #{visitor.city}"
 
       # return [expired, "#{prefix} #{region}"]
-      return [expired, get_greeting_string(visitor.country, visitor.state, visitor.city)]
+      return [expired, get_greeting_string(visitor.country, visitor.state, visitor.city, visitor.last_visit_at)]
     end
 
     begin
@@ -95,15 +95,24 @@ class ArticlesController < ApplicationController
     region = (visitor.country == unknow) ? unknow : "#{visitor.country}, #{visitor.city}"
 
     # return [true, "#{prefix} #{region}"]
-    return [true, get_greeting_string(country, state, city)]
+    return [true, get_greeting_string(country, state, city, visitor.last_visit_at)]
 
   end
 
-  def get_greeting_string(country, state, city)
-    greeting_string = Settings.geo_greeting.prefix
+  def get_greeting_string(country, state, city, last_visit_at)
+    if (Time.now - last_visit_at )> 1.week
+      greeting_string = Settings.geo_greeting.prefix1
+    elsif (Time.now - last_visit_at )> 14.hour
+      greeting_string = Settings.geo_greeting.prefix2
+    elsif country == Settings.geo_greeting.ip_geo_unknow
+      greeting_string = Settings.geo_greeting.prefix0
+    else
+      greeting_string = Settings.geo_greeting.prefix0
+    end
+
     greeting_string += " #{city}," if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
     greeting_string += " #{state}," if state != Settings.geo_greeting.ip_geo_unknow
-    greeting_string += " #{country}"
+    greeting_string += " #{country}" if country != Settings.geo_greeting.ip_geo_unknow
     # greeting_string += "#{state}" if state != Settings.geo_greeting.ip_geo_unknow
     # greeting_string += "#{city}" if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
 

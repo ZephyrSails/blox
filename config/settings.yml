@@ -11,9 +11,13 @@ link:
 error: -1
 
 geo_greeting:
+  prefix0: "Greeting, traveller"
   prefix: "你好, Visitor from"
+  prefix1: "别来无恙, Visitor from"
+  prefix2: "一日不见, 如隔三秋, Visitor from"
+
   ip_geo_unknow: "unknow region"
-  expire_sec: 64
+  expire_sec: 256
   unpersice_country: ["China"]
 
 
