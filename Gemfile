@@ -87,6 +87,7 @@ gem 'devise'
 gem 'cancan' # or cancancan
 gem 'draper'
 gem 'pundit'
+gem 'rb-readline'
 # gem 'redcarpet', '~> 3.3.3'
 # gem 'rouge', '~> 1.8.0'
 # gem 'auto-space', '0.0.4'

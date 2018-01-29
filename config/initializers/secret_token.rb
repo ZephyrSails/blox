@@ -1,0 +1,1 @@
+Blox::Application.config.secret_key_base = '8a2258ac85a69126d47be390f38cef15082f4fad2de49dfbddd146a02148b3c9ecf7b95c1bf569b5f9216f3f2faafddae65edd20ed436249a20dacf223bec58b'
