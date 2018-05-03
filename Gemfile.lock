@@ -320,7 +320,7 @@ DEPENDENCIES
   pundit
   rack-cors
   rack-utf8_sanitizer
-  rails
+  rails (= 4.2.10)
   rails-settings-cached (~> 0.4.0)
   rails_autolink
   rb-readline
