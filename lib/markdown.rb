@@ -99,10 +99,10 @@ class MarkdownTopicConverter < MarkdownConverter
 
     result = convert(text)
 
-    doc = Nokogiri::HTML.fragment(result)
+    doc = Nokogiri::HTML.fragment(result, encoding = nil)
     # link_mention_floor(doc)
     # link_mention_user(doc, users)
-    replace_emoji(doc)
+    # replace_emoji(doc)
 
     return doc.to_html.strip
   # rescue => e
@@ -203,7 +203,7 @@ class MarkdownTopicConverter < MarkdownConverter
   end
 
   def replace_emoji(doc)
-    doc.search('text()').each do |node|
+    doc.xpath('text()').each do |node|
       content = node.to_html
       next unless content.include?(':')
       next if ancestors?(node, %w(pre code))

@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
-gem 'rails', '4.2.4'
+gem 'rails'
 # Use sqlite3 as the database for Active Record
 gem 'sqlite3'
 # We use mysql2
@@ -49,16 +49,16 @@ group :development do
 end
 
 group :assets do
-  gem 'therubyracer'
+  gem 'therubyracer', '~> 0.12.3'
   # gem 'sass-rails' # , "  ~> 3.1.0"
   # gem 'coffee-rails' # , "~> 3.1.0"
   # gem 'uglifier'
 end
 
 gem 'bootstrap-sass', '~> 3.3.6'
-gem "font-awesome-rails"
+gem 'font-awesome-rails'
 # config file in /config/Settings
-gem "config"
+gem 'config'
 
 # gem 'sass-rails', '>= 3.2'
 
@@ -66,7 +66,7 @@ gem "config"
 gem 'redcarpet'
 gem 'rouge'
 gem 'auto-space'
-gem 'nokogiri', '1.6.5'
+gem 'nokogiri', '~> 1.8.2'
 gem 'md_emoji'
 gem 'rails_autolink'
 
@@ -74,11 +74,11 @@ gem 'rails_autolink'
 gem 'rack-cors', require: 'rack/cors'
 gem 'rack-utf8_sanitizer'
 
-gem "rails-settings-cached", "~> 0.4.0"
+gem 'rails-settings-cached', '~> 0.4.0'
 
 gem 'thin'
 
-gem 'puma'
+gem 'puma', '~>3.10'
 # https://github.com/activeadmin/activeadmin
 gem 'activeadmin', github: 'activeadmin'
 gem 'active_skin'
@@ -112,3 +112,5 @@ gem 'redis'
 
 # gem 'cardboard_cms'
 # gem 'cardboard_cms', '~> 0.3.1'
+
+gem 'rb-readline'
