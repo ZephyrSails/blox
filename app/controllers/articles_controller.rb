@@ -34,6 +34,7 @@ class ArticlesController < ApplicationController
       @article = Article.find(params[:id])
     elsif params[:stamp]
       @article = Article.find_by(title: params[:stamp])
+      @is_article = true
     else
     end
 

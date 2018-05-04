@@ -30,7 +30,8 @@
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="/link/Morgan Xiu">MorganX</a>
+      <% if @is_article %><a class="navbar-brand" href="/">MorganX</a><% else %><a class="navbar-brand" href="/link/Morgan Xiu">MorganX</a><% end %>
+      <!-- <a class="navbar-brand" href="/link/Morgan Xiu">MorganX</a> -->
     </div>
 
     <!-- Collect the nav links, forms, and other content for toggling -->
