@@ -7,7 +7,7 @@
       <% if @articles.empty? %>
         <h3>This article list is still empty, I'm not ready to put anything in here yet.<br><br>Sorry, maybe next time.</h3>
       <% elsif @articles == Settings.error %>
-        <h3>This article list doesn't exist.<br><br>Hum...are you "hacking" around?</h3>
+        <h3>This article list doesn't exist.<br><br>Hum...are you hacking around?</h3>
       <% else %>
         <% @articles.each do |article| %>
           <%= render partial: 'articles/article', object: article %>
