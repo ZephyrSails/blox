@@ -7,11 +7,14 @@ article_stamps: ["lab", "log", "tech", "thought", "other" ,"all"]
 
 link:
   local_freegeoip: "http://127.0.0.1:8081/json/"
+  online_freegeoip: "http://api.ipstack.com/"
+  online_freegeoip_params: "?access_key=1578a0b88cc47a5a85bf0a8917bcdf00&output=json"
 
 error: -1
 
 geo_greeting:
-  prefix0: "Greeting, traveller"
+  slogan: "愿为长空牧群星"
+  prefix0: "Greetings, traveller"
   prefix: "你好, Visitor from"
   prefix1: "别来无恙, Visitor from"
   prefix2: "一日不见, 如隔三秋, Visitor from"

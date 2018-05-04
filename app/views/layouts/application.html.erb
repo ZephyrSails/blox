@@ -2,16 +2,11 @@
 <html>
 
 <head>
-
   <title>Morgan Xiu's Blog</title>
-
-
   <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
   <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
-
   <%= csrf_meta_tags %>
   <%= favicon_link_tag 'icons/z_150px_3.png' %>
-
 </head>
 
 <div style="display:none">
@@ -31,7 +26,6 @@
         <span class="icon-bar"></span>
       </button>
       <% if @is_article %><a class="navbar-brand" href="/">MorganX</a><% else %><a class="navbar-brand" href="/link/Morgan Xiu">MorganX</a><% end %>
-      <!-- <a class="navbar-brand" href="/link/Morgan Xiu">MorganX</a> -->
     </div>
 
     <!-- Collect the nav links, forms, and other content for toggling -->
@@ -66,10 +60,12 @@
 
   <!-- Page Header -->
   <!-- Set your background image for this header on the line below. -->
-  <style><%= yield :stylesheets %></style>
+
+<style>
+  <%= yield :stylesheets %>
+</style>
 
 <%= yield :header %>
-
   <header id="header-background" class="intro-header" style="background-image: url('<%= asset_path Settings.backgrounds.homepage %>')">
     <div class="container">
       <div class="row">
@@ -77,13 +73,12 @@
           <div class="site-heading">
             <h1>Morgan Xiu</h1>
             <hr class="small">
-            <span class="subheading" id="greeting">愿为长空牧群星</span>
+            <span class="subheading" id="greeting"><%= asset_path Settings.geo_greeting.slogan %></span>
           </div>
         </div>
       </div>
     </div>
   </header>
-</body>
 <!-- <a href="#" onclick="paintIt(this, '#990000','<%=$remote_ip%>')" >Paint it red</a> -->
 <%= yield %>
 
@@ -125,5 +120,4 @@
     </div>
   </div>
 </footer>
-</body>
 </html>

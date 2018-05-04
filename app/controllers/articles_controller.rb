@@ -12,9 +12,10 @@ class ArticlesController < ApplicationController
       @articles = Settings.error
     end
 
-
-    gon.greeting_words = ""
     gon.greeting_words = get_geo_string
+    gon.slogan = Settings.geo_greeting.slogan
+
+    # logger.debug get_geo_string
     @greeting_words = ""
 
     # end
@@ -22,7 +23,6 @@ class ArticlesController < ApplicationController
     #   @cached ||= set_geo_string
     #   gon.greeting_words = @cached
     # end
-
   end
 
   def show
@@ -62,13 +62,11 @@ class ArticlesController < ApplicationController
       last_visit_at = visitor.last_visit_at
       visitor.update(last_visit_at: DateTime.now, visit_count: visitor.visit_count+1)
       region = visitor.country == unknow ? unknow : "#{visitor.country}, #{visitor.city}"
-
-      # return [expired, "#{prefix} #{region}"]
       return [expired, get_greeting_string(visitor.country, visitor.state, visitor.city, last_visit_at)]
     end
 
     begin
-      geo_info = HTTP.get "#{Settings.link.local_freegeoip}#{remote_ip}"
+      geo_info = HTTP.get "#{Settings.link.online_freegeoip}#{remote_ip}#{Settings.link.online_freegeoip_params}"
       geo_json = JSON.parse(geo_info)
       get_geo_success = true
 
@@ -95,8 +93,6 @@ class ArticlesController < ApplicationController
     visitor.save
 
     region = (visitor.country == unknow) ? unknow : "#{visitor.country}, #{visitor.city}"
-
-    # return [true, "#{prefix} #{region}"]
     return [true, get_greeting_string(country, state, city, visitor.last_visit_at)]
 
   end
@@ -115,9 +111,6 @@ class ArticlesController < ApplicationController
     greeting_string += " #{city}," if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
     greeting_string += " #{state}," if state != Settings.geo_greeting.ip_geo_unknow
     greeting_string += " #{country}" if country != Settings.geo_greeting.ip_geo_unknow
-    # greeting_string += "#{state}" if state != Settings.geo_greeting.ip_geo_unknow
-    # greeting_string += "#{city}" if city != Settings.geo_greeting.ip_geo_unknow and !Settings.geo_greeting.unpersice_country.include? country
-
     return greeting_string
   end
 
